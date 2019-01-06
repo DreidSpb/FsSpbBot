@@ -16,8 +16,13 @@ API_TOKEN = "" #Put bot token here
 ADMINS = [] #Put telegram-names of admins here
 TEST_MODE = False
 MODES = ["Trekker", "Links", "Fields"]
-
 CHAT_TIMEZONE = "Europe/Moscow"
+
+def save_data():
+    datafile = open("base.txt", "w")
+    json.dump(data, datafile, ensure_ascii=False)
+    datafile.close()
+
 try:
     tzfile = open("/etc/timezone", "r")
     LOCAL_TIMEZONE = tzfile.read().strip()
@@ -52,11 +57,6 @@ if not "counters" in data.keys():
     data["counters"] = {}
 datafile.close()
 save_data()
-
-def save_data():
-    datafile = open("base.txt", "w")
-    json.dump(data, datafile, ensure_ascii=False)
-    datafile.close()
 
 def zero_reg(id):
     if id == data["regchat"]:
