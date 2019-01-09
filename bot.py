@@ -53,15 +53,18 @@ if not "counters" in data.keys():
 datafile.close()
 save_data()
 
+
 def save_data():
     datafile = open("base.txt", "w")
     json.dump(data, datafile, ensure_ascii=False)
     datafile.close()
 
+
 def zero_reg(id):
     if id == data["regchat"]:
         data["regchat"] = 0
         save_data()
+
 
 def parse_reg():
     reg = {}
@@ -87,38 +90,6 @@ def parse_reg():
     save_data()
     return len(reg)
 
-def filter_yellow(px):
-    if px[0] > 130 and px[1] > 130 and px[2] < px[1] and px[2] < px[0]:
-        return (255, 255, 255)
-    else:
-        return (0,0,0)
-
-def filter_yellow2(px):
-    if px[0] > 140 and px[1] > 140 and px[2] < px[1]:
-        return (255, 255, 255)
-    else:
-        return (0,0,0)
-
-def filter_yellow3(px):
-    if px[0] > 150 and px[1] > 150 and px[2] < px[1]:
-        return (255, 255, 255)
-    else:
-        return (0,0,0)
-
-def filter_primeap(px):
-    if abs(px[0] - 165) + abs(px[1] - 165) + abs(px[2] - 230) < 120:
-        return (255, 255, 255)
-    else:
-        return (0,0,0)
-
-def filter_primetr(px):
-    if abs(px[0] - 150) + abs(px[1] - 70) + abs(px[2] - 120) < 210:
-        return (255, 255, 255)
-    else:
-        if abs(px[0] - 160) + abs(px[1] - 160) + abs(px[2] - 240) < 50:
-            return (255, 255, 255)
-        else:
-            return (0,0,0)
 
 def strDiff(str1, str2):
     d = difflib.ndiff(str1, str2)
@@ -127,6 +98,7 @@ def strDiff(str1, str2):
         if dd[0] in ["+", "-"]:
             diffs.append(dd)
     return len(diffs) < len(str2)
+
 
 def returnVal(ap, name, value):
     kmregexp = re.compile(r"([0-9]+)k(m|rn)")
@@ -145,199 +117,186 @@ def returnVal(ap, name, value):
             return {"success": True, "AP": ap, "Fields": int(value), "mode": "Fields"}
     return False
 
-def parse_image(filename):
-    ap = 0
-    trekker = 0
-    apregexp = re.compile(r"([0-9]+)AP")
-    img = Image.open(filename)
-    yellow = (255, 255, 160)
-    green = (0, 140, 125)
-    marble = (20, 175, 165)
-    pink = (150, 70, 120)
-    redactLine = (65, 165, 150)
-    concurrent = 0
-    APLine = 0
 
-    for y in range(int(img.height / 3)):
+def colorDiff(px:tuple, color:tuple):
+    return abs(px[0]-color[0]) + abs(px[1]-color[1]) + abs(px[2]-color[2])
+
+
+def find_lines(pixels:tuple, width:int, rect:tuple, colors:list, threshhold:int, minWidth:int=1, findCount:int=0, average:bool=True, horizontal:bool=True):
+    w = rect[2]-rect[0]
+    h = rect[3]-rect[1]
+    xRange = w if horizontal else h
+    yStart = rect[1] if horizontal else rect[0]
+    yEnd = rect[3] if horizontal else rect[2]
+    pxDiff = 1 if horizontal else w
+    results = []
+    last = 0
+    concurrent = 0
+    for y in range(yStart, yEnd):
         lineError = 0
-        for x in range(int(img.width * 0.3), int(img.width * 0.9)):
-            px = img.getpixel((x, y))
-            yellowError = abs(px[0] - yellow[0]) + abs(px[1] - yellow[1]) + abs(px[2] - yellow[2])
-            greenError = abs(px[0] - green[0]) + abs(px[1] - green[1]) + abs(px[2] - green[2])
-            lineError += min(yellowError, greenError)
-        lineError /= img.width * 0.6
-        if lineError < 70:
-            concurrent += 1
+        if horizontal:
+            currPx = y * width + rect[0]
+        else:
+            currPx = y + rect[1] * width
+        process = True
+        for x in range(xRange):
+            if process:
+                diffs = tuple(colorDiff(pixels[currPx], color) for color in colors)
+                currPx += pxDiff
+                lineError += min(diffs)
+                if not average:
+                    if min(diffs) > threshhold:
+                        process = False
+        if process:
+            lineError /= w
+            if lineError < threshhold:
+                concurrent += 1
+                if concurrent >= minWidth and y - last > minWidth * 3:
+                    results.append(y)
+                    last = y
+                    if findCount and (len(results) >= findCount):
+                        return results
+            else:
+                concurrent = 0
         else:
             concurrent = 0
-        if concurrent > 2:
-            APLine = y
-    if APLine:
-        left = int(img.width / 2)
-        right = int(img.width * 0.9)
-        foundBlack = False
-        for x in range(left, 0, -1):
-            if foundBlack == False:
-                px = img.getpixel((x, APLine))
-                if px[0] + px[1] + px[2] < 100:
-                    left = x
-                    foundBlack = True
-        top = APLine
-        for y in range(top, top + 10):
-            blackLine = True
-            for x in range(left, right):
-                if blackLine:
-                    px = img.getpixel((x, y))
-                    if px[0] + px[1] + px[2] > 100:
-                        blackLine = False
-            if blackLine:
-                top = y
-        bottom = 0
-        y = top
-        while bottom == 0:
-            y += 1
-            blackLine = True
-            for x in range(left, right):
-                if blackLine:
-                    px = img.getpixel((x, y))
-                    if px[0] + px[1] + px[2] > 100:
-                        blackLine = False
-            if blackLine:
-                bottom = y + 5
-        apImg = img.crop((left, top, right, bottom))
-        pixels = apImg.getdata()
-        apImg.putdata([filter_yellow(px) for px in pixels])
-        ap = pytesseract.image_to_string(apImg).replace("I", "1").replace("L", "1").replace("l", "1").replace("S", "6").replace("B", "8").replace("E", "8").replace(".", "").replace(",", "").replace(" ", "").replace("[", "1").replace("]", "1").replace("{", "1").replace("}", "1").replace("H", "11").replace("O", "0").replace("D", "0")
-        match = apregexp.match(ap)
-        if match:
-            ap = int(match.group(1))
-            foundLines = []
-            for y in range(APLine, img.height):
-                lineError = 0
-                for x in range(int(img.width * 0.1), int(img.width * 0.9)):
-                    px = img.getpixel((x, y))
-                    lineError += abs(px[0] - redactLine[0]) + abs(px[1] - redactLine[1]) + abs(px[2] - redactLine[2])
-                lineError /= img.width * 0.8
-                if lineError < 125:
-                    toSave = True
-                    for l in foundLines:
-                        if abs(l - y) < 10:
-                            toSave = False
-                    if toSave:
-                        foundLines.append(y)
-            if len(foundLines) > 1:
-                img = img.crop((0, foundLines[0] + 10, img.width, foundLines[1]))
-                name = pytesseract.image_to_string(img.crop((int(img.width * 0.28), 0, int(img.width * 3 / 4), int(img.height / 2)))).split("\n")[0]
-                trImg = img.crop((0, int(img.height * 0.4), int(img.width / 3), int(img.height * 0.6)))
-                trLeft = 0
-                for x in range(trImg.width - 1):
-                    lineError = 0
-                    for y in range(trImg.height - 1):
-                        px = trImg.getpixel((x, y))
-                        marbleError = abs(px[0] - marble[0]) + abs(px[1] - marble[1]) + abs(px[2] - marble[2])
-                        greenError = abs(px[0] - green[0]) + abs(px[1] - green[1]) + abs(px[2] - green[2])
-                        lineError += min(marbleError, greenError)
-                    lineError /= trImg.height
-                    if lineError < 100:
-                        trLeft = x + 1
-                trImg = trImg.crop((trLeft, 0, trImg.width, trImg.height))
-                trTop = 0
-                for y in range(trImg.height - 1):
-                    if trTop == 0:
-                        blackLine = True
-                        for x in range(trImg.width - 1):
-                            px = trImg.getpixel((x, y))
-                            if px[0] + px[1] + px[2] > 150:
-                                blackLine = False
-                        if blackLine:
-                            trTop = y
-                trImg = trImg.crop((0, trTop, trImg.width, trImg.height))
-                trBottom = trImg.height
-                for y in range(trImg.height - 1, 0, -1):
-                    if trBottom == trImg.height:
-                        lineValue = 0
-                        for x in range(trImg.width - 1):
-                            px = trImg.getpixel((x, y))
-                            lineValue += px[0] + px[1] + px[2]
-                        lineValue /= trImg.width
-                        if lineValue < 15:
-                            trBottom = y
-                trImg = trImg.crop((0, 0, trImg.width, trBottom))
-                pixels = trImg.getdata()
-                trCopy = trImg.copy()
-                trImg.putdata([filter_yellow2(px) for px in pixels])
-                for y in range(trImg.height - 1):
-                    changes = 0
-                    for x in range(1, trImg.width - 1):
-                        if trImg.getpixel((x, y)) != trImg.getpixel((x -1, y)):
-                            changes += 1
-                    if changes < 8:
-                        for x in range(trImg.width):
-                            trImg.putpixel((x,y), (0,0,0))
-                value = pytesseract.image_to_string(trImg)
-                value = value.replace("I", "1").replace("L", "1").replace("l", "1").replace("S", "6").replace("B", "8").replace("E", "8").replace(".", "").replace(",", "").replace(" ", "").replace("[", "1").replace("]", "1").replace("{", "1").replace("}", "1").replace("H", "11").replace("O", "0").replace("D", "0")
-                ret = returnVal(ap, name, value)
-                if ret != False:
-                    return ret
-                trCopy.putdata([filter_yellow3(px) for px in pixels])
-                for y in range(trCopy.height - 1):
-                    changes = 0
-                    for x in range(1, trCopy.width - 1):
-                        if trCopy.getpixel((x, y)) != trCopy.getpixel((x -1, y)):
-                            changes += 1
-                    if changes < 8:
-                        for x in range(trCopy.width):
-                            trCopy.putpixel((x,y), (0,0,0))
-                value = pytesseract.image_to_string(trCopy)
-                value = value.replace("I", "1").replace("L", "1").replace("l", "1").replace("S", "6").replace("B", "8").replace("E", "8").replace(".", "").replace(",", "").replace(" ", "").replace("O", "0").replace("D", "0")
-                ret = returnVal(ap, name, value)
-                if ret != False:
-                    return ret
-    else:
-        foundLines = []
-        for y in range(50, int(img.height * 0.9)):
-            lineError = 0
-            for x in range(int(img.width * 0.3), int(img.width * 0.9)):
-                px = img.getpixel((x, y))
-                lineError += abs(px[0] - pink[0]) + abs(px[1] - pink[1]) + abs(px[2] - pink[2])
-            lineError /= img.width * 0.6
-            if lineError < 180:
-                toSave = True
-                for l in foundLines:
-                    if abs(l - y) < 10:
-                        toSave = False
-                if toSave:
-                    foundLines.append(y)
-        if len(foundLines) in [3, 4]:
-            primeAPImg = img.crop((int(img.width / 4), foundLines[0], img.width, foundLines[0] + int((foundLines[2] - foundLines[1]) * 2 / 3)))
-            pixels = primeAPImg.getdata()
-            primeAPImg.putdata([filter_primeap(px) for px in pixels])
-            ap = pytesseract.image_to_string(primeAPImg).replace("I", "1").replace("L", "1").replace("l", "1").replace("B", "8").replace("E", "8").replace(".", "").replace(",", "").replace(" ", "").replace("/", "").replace("O", "0").replace("D", "0")
-            match = apregexp.match(ap)
-            if match:
-                ap = int(match.group(1))
-                primeTRImg = img.crop((int(img.width / 4), foundLines[1], int(img.width * 3 / 4), int(foundLines[2] + (foundLines[2] - foundLines[1]) / 2)))
-                pixels = primeTRImg.getdata()
-                primeTRImg.putdata([filter_primetr(px) for px in pixels])
-                trTop = 0
-                for y in range(primeTRImg.height - 1):
-                    if trTop == 0:
-                        blackLine = True
-                        for x in range(primeTRImg.width - 1):
-                            px = primeTRImg.getpixel((x, y))
-                            if px[0] + px[1] + px[2] > 150:
-                                blackLine = False
-                        if blackLine:
-                            trTop = y
-                primeTRImg = primeTRImg.crop((0, trTop, primeTRImg.width, primeTRImg.height))
-                trekker = pytesseract.image_to_string(primeTRImg)
-                trLines = trekker.split("\n");
-                value = trLines[0].replace("I", "1").replace("L", "1").replace("l", "1").replace("B", "8").replace("E", "8").replace(".", "").replace(",", "").replace(" ", "").replace("[", "1").replace("]", "1").replace("{", "1").replace("}", "1").replace("H", "11").replace("O", "0").replace("D", "0")
-                name = trLines[len(trLines) - 1]
-                ret = returnVal(ap, name, value)
-                if ret != False:
-                    return ret
+    return results
+
+
+def parse_image(filename:str):
+    debug = False
+    ap = 0
+    trekker = 0
+    apregexp = re.compile(r"([0-9]+)A[PF]")
+    img = Image.open(filename)
+    yellow = (255, 243, 140)
+    green = (0, 134, 123)
+    marble = (20, 175, 165)
+    redactLine = (0, 186, 181)
+    pink = (188, 50, 124)
+    primeBack = (11, 18,36)
+    pxls = tuple(img.getdata())
+
+    #Search for AP line
+    APLines = find_lines(pxls, img.width, (int(img.width * 0.3), int(img.height * 0.1), int(img.width * 0.9), int(img.height * 0.4)), [yellow, green], 70, 3, 1)
+    APLine = APLines[0] if len(APLines) else False
+
+    if APLine: #We found AP line - Scanner "Redacted" mode
+        redactLines = find_lines(pxls, img.width, (int(img.width * 0.1), int(img.height * 0.25), int(img.width * 0.9), int(img.height * 0.75)), [redactLine], 200, 1)
+        if len(redactLines) > 1: #Found top and bottom border of opened medal
+            redactVLines = find_lines(pxls, img.width, (0, redactLines[0], img.width, redactLines[1]), [redactLine], 150, 1, 0, True, False)
+            if len(redactVLines) == 2: #found left and right
+                #Extract medal name to IMG
+                medalName=img.crop((int(redactVLines[1] * 0.25 + redactVLines[0] * 0.75) + 10, redactLines[0] + 5, int(redactVLines[1] * 0.9 + redactVLines[0] * 0.1), int(redactLines[0] * 0.65 + redactLines[1] * 0.35)))
+                if debug:
+                    medalName.save("tables/" + filename + "_name.png")
+                #Find first black line above medal value
+                blackLines=find_lines(pxls, img.width, (redactVLines[0] + 5, int(redactLines[0] * 0.6 + redactLines[1] * 0.4), int(redactVLines[0] / 2 + redactVLines[1] / 2), int(redactLines[0] * 0.35 + redactLines[1] * 0.65)), [(0,0,0)], 100, 1, 1, False)
+                if len(blackLines): #Found
+                    medalValRect = [redactVLines[0] + 10, blackLines[0], int(redactVLines[1] * 0.3 + redactVLines[0] * 0.7), int(redactLines[0] * 0.4 + redactLines[1] * 0.6)]
+                    #Crop from top
+                    top = medalValRect[1]
+                    currpx = img.width * top + int(medalValRect[0] / 2 + medalValRect[2] / 2)
+                    while top < medalValRect[3] and pxls[currpx][0] + pxls[currpx][1] + pxls[currpx][2] < 50:
+                        currpx += img.width
+                        top +=1
+                    medalValRect[1] = top + 1
+
+                    #Crop from bottom
+                    bottom = medalValRect[3]
+                    currpx = img.width * bottom + int(medalValRect[0] / 2 + medalValRect[2] / 2)
+                    while bottom > top and pxls[currpx][0] + pxls[currpx][1] + pxls[currpx][2] < 50:
+                        currpx -= img.width
+                        bottom -=1
+                    medalValRect[3] = bottom - 1
+
+                    #Extract medal value to IMG
+                    medalValue=img.crop(medalValRect)
+                    if debug:
+                        medalValue.save("tables/" + filename + "_val.png")
+
+                    #Find black dot before AP line (left AP border)
+                    left = int(img.width / 2)
+                    currpx = img.width * APLine + left
+                    while left > 0 and pxls[currpx][0] + pxls[currpx][1] + pxls[currpx][2] > 150:
+                        currpx -= 1
+                        left -= 1
+
+                    #Find first black line after AP line
+                    top = 0
+                    currpx = img.width * APLine + left + 1
+                    while APLine + top < img.height and pxls[currpx][0] + pxls[currpx][1] + pxls[currpx][2] > 150:
+                        currpx += img.width
+                        top += 1
+
+                    #Extract AP to file (height == height of medal value)
+                    apImg = img.crop((left - 5, APLine + top, img.width, APLine + medalValue.height + 5))
+                    if debug:
+                        apImg.save("tables/" + filename + "_ap.png")
+
+                    #Filter out non-yellow pixels
+                    pixels = apImg.getdata()
+                    apImg.putdata([px if px[0] > px[2] else (0,0,0) for px in pixels])
+                    if debug:
+                        apImg.save("tables/" + filename + "_ap_filter.png")
+                    #OCR, replace some letters
+                    ap = pytesseract.image_to_string(apImg).replace("I", "1").replace("L", "1").replace("l", "1").replace("S", "6").replace("B", "8").replace("E", "8").replace(".", "").replace(",", "").replace(" ", "").replace("[", "1").replace("]", "1").replace("{", "1").replace("}", "1").replace("H", "11").replace("O", "0").replace("D", "0").replace("\"", "11")
+                    match = apregexp.match(ap)
+                    if match: #Got AP!
+                        ap = int(match.group(1))
+                        #OCR name and value, replace letters in value
+                        name = pytesseract.image_to_string(medalName).split("\n")[0]
+                        value = pytesseract.image_to_string(medalValue)
+                        value = value.replace("I", "1").replace("L", "1").replace("l", "1").replace("S", "6").replace("B", "8").replace("E", "8").replace(".", "").replace(",", "").replace(" ", "").replace("[", "1").replace("]", "1").replace("{", "1").replace("}", "1").replace("H", "11").replace("O", "0").replace("D", "0")
+                        #Check if everything is OK
+                        ret = returnVal(ap, name, value)
+                        if ret != False:
+                            if debug:
+                                img.save("results/ok/"+filename)
+                            return ret
+    else: #No AP line. Prime?
+        #Find pink lines (1 - above AP, 2 - in medal)
+        pinkLines=find_lines(pxls, img.width, (int(img.width * 0.3), 0, int(img.width * 0.7), int(img.height * 0.7)), [pink], 180, 1, 2)
+        if len(pinkLines) == 2: #Found
+            #Search for empry line after AP
+            primeBacks=find_lines(pxls, img.width, (int(img.width * 0.25), pinkLines[0] + 10, img.width, pinkLines[1]), [primeBack], 50, 1, 1, False)
+            if len(primeBacks) == 1:
+                #Main height parameter
+                primeHeight = primeBacks[0] - pinkLines[0]
+                #Extract AP to IMG
+                primeAPImg = img.crop((int(img.width * 0.25), pinkLines[0] + 10, img.width, primeBacks[0]))
+                if debug:
+                    primeAPImg.save("tables/" + filename + "_ap.png")
+
+                #Filter out second part (" / 40 000 000"), nickname and level
+                pixels = primeAPImg.getdata()
+                primeAPImg.putdata([px if abs(px[0] - 159) + abs(px[1] - 164) + abs(px[2] - 230) < 120 else (0,0,0) for px in pixels])
+                if debug:
+                    primeAPImg.save("tables/" + filename + "_ap_filter.png")
+
+                #OCR AP, replace letters
+                ap = pytesseract.image_to_string(primeAPImg).replace("I", "1").replace("L", "1").replace("l", "1").replace("B", "8").replace("E", "8").replace(".", "").replace(",", "").replace(" ", "").replace("/", "").replace("O", "0").replace("D", "0")
+                match = apregexp.match(ap)
+                if match: #Got AP!
+                    ap = int(match.group(1))
+                    #Get medal part
+                    primeTRImg = img.crop((int(img.width / 4), pinkLines[1] - int(primeHeight / 2), int(img.width * 3 / 4), pinkLines[1] + int(primeHeight * 2 / 3)))
+                    if debug:
+                        primeTRImg.save("tables/" + filename + "_val.png")
+                    #OCR, get name and value, replace letters in val
+                    trLines = pytesseract.image_to_string(primeTRImg).split("\n");
+                    value = trLines[0].replace("I", "1").replace("L", "1").replace("l", "1").replace("B", "8").replace("E", "8").replace(".", "").replace(",", "").replace(" ", "").replace("[", "1").replace("]", "1").replace("{", "1").replace("}", "1").replace("H", "11").replace("O", "0").replace("D", "0")
+                    name = trLines[len(trLines) - 1]
+                    #Check if everything is OK
+                    ret = returnVal(ap, name, value)
+                    if ret != False:
+                        if debug:
+                            img.save("results/ok/"+filename)
+                        return ret
+    if debug:
+        img.save("results/bad/"+filename)
     return {"filename": filename, "success": False}
+
 
 def restricted(func):
     @wraps(func)
@@ -348,13 +307,16 @@ def restricted(func):
         return func(message, *args, **kwargs)
     return wrapped
 
+
 @bot.message_handler(commands=["start"])
 def send_welcome(message):
     bot.reply_to(message, (data["welcome"]))
 
+
 @bot.message_handler(commands=["help"])
 def send_welcome(message):
     bot.reply_to(message, ("loadreg - (for admins) Load list of registered agents\nreg - (for admins) Add one agent (/reg AgentName TelegramName)\nstartevent - (for admins) Begin taking start screenshots\nendevent - (for admins) Begin taking final screenshots\nreset - (for admins) Clear all data and settings\nsetokchat - (for admins) Set this chat as destination for parsed screens\nsetfailchat - (for admins) Set this chat as destination for NOT parsed screens\nresult - (for admins) Get result table file\nstop - (for admins) Stop taking events\nsetwelcome - (for admins) Set welcome message"))
+
 
 @bot.message_handler(commands=["loadreg"])
 @restricted
@@ -363,12 +325,14 @@ def loadreg(message):
     save_data()
     bot.reply_to(message, ("Грузи файло"))
 
+
 @bot.message_handler(commands=["setwelcome"])
 @restricted
 def setwelcome(message):
     data["welcome"] = message.text[str(message.text + " ").find(" "):]
     save_data()
     bot.send_message(message.chat.id, ("Обновил приветствие"))
+
 
 @bot.message_handler(commands=["setokchat"])
 @restricted
@@ -379,6 +343,7 @@ def setok(message):
     save_data()
     bot.reply_to(message, ("Теперь я буду сюда форвардить распознанное"))
 
+
 @bot.message_handler(commands=["setfailchat"])
 @restricted
 def setfail(message):
@@ -387,6 +352,7 @@ def setfail(message):
     data["failChat"] = message.chat.id
     save_data()
     bot.reply_to(message, ("Теперь я буду сюда форвардить нераспознанное"))
+
 
 @bot.message_handler(commands=["reset"])
 @restricted
@@ -403,6 +369,7 @@ def forget(message):
     save_data()
     bot.reply_to(message, ("Всё, я всё забыл :)"))
 
+
 @bot.message_handler(commands=["reg"])
 @restricted
 def addreg(message):
@@ -415,6 +382,7 @@ def addreg(message):
     bot.reply_to(message, ("Формат: /reg agentname telegramname"))
     return
 
+
 @bot.message_handler(commands=["startevent"])
 @restricted
 def setstart(message):
@@ -422,6 +390,7 @@ def setstart(message):
     data["getEnd"] = False
     save_data()
     bot.send_message(message.chat.id, ("Принимаю скрины!"))
+
 
 @bot.message_handler(commands=["endevent"])
 @restricted
@@ -431,6 +400,7 @@ def setend(message):
     save_data()
     bot.send_message(message.chat.id, ("Принимаю скрины!"))
 
+
 @bot.message_handler(commands=["stop"])
 @restricted
 def setstop(message):
@@ -438,6 +408,7 @@ def setstop(message):
     data["getEnd"] = False
     save_data()
     bot.send_message(message.chat.id, ("Не принимаю скрины!"))
+
 
 @bot.message_handler(commands=["result"])
 @restricted
@@ -474,10 +445,12 @@ def getresult(message):
     resultfile.close()
 #    bot.send_message(message.chat.id, ("Work in progress"))
 
+
 @bot.message_handler(func=lambda message: True, content_types=["text"])
 def process_msg(message):
     zero_reg(message.chat.id)
     bot.reply_to(message, ("А что ты мне такое пишешь-то? Со мной бесполезно разговаривать, я бот, ничего не знаю"))
+
 
 @bot.message_handler(func=lambda message: True, content_types=["photo"])
 def process_photo(message):
@@ -551,6 +524,7 @@ def process_photo(message):
         if data["failChat"]:
             bot.forward_message(data["failChat"], message.chat.id, message.message_id)
 
+
 @bot.message_handler(func=lambda message: True, content_types=["document"])
 def process_others(message):
     if message.chat.id == data["regchat"]:
@@ -564,6 +538,7 @@ def process_others(message):
         bot.reply_to(message, "Рега принята, записей: %s"%reg_count)
         return
     bot.reply_to(message, ("Что это ещё за странный файл? Я от тебя ничего не жду"))
+
 
 if __name__ == "__main__":
     bot.polling(none_stop=True)
