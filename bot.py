@@ -92,7 +92,7 @@ def strDiff(str1:str, str2:str):
 
 
 def returnVal(ap:int, name:str, value:str):
-    kmregexp = re.compile(r"([0-9]+)k(m|rn)")
+    kmregexp = re.compile(r"([0-9]+)k(m|rn|n)")
     numregexp = re.compile(r"^([0-9]+)$")
     global MODES
     if strDiff(name, "Hacker") and "Hacks" in MODES:
