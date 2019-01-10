@@ -22,9 +22,8 @@ try:
     data = json.load(datafile)
 except FileNotFoundError:
     data = {}
-    save_data()
-    datafile = open("base.txt", "r")
-    data = json.load(datafile)
+    datafile = open("base.txt", "w")
+    json.dump(data, datafile, ensure_ascii=False)
 if not "regchat" in data.keys():
     data["regchat"] = 0
 if not "welcome" in data.keys():
@@ -42,7 +41,9 @@ if not "reg" in data.keys():
 if not "counters" in data.keys():
     data["counters"] = {}
 datafile.close()
-save_data()
+datafile = open("base.txt", "w")
+json.dump(data, datafile, ensure_ascii=False)
+datafile.close()
 
 
 def save_data():
