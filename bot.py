@@ -7,7 +7,6 @@ import pytesseract
 import telebot
 import json
 import datetime
-import pytz
 import re
 import csv
 import difflib
@@ -16,14 +15,6 @@ API_TOKEN = "" #Put bot token here
 ADMINS = [] #Put telegram-names of admins here
 TEST_MODE = False
 MODES = ["Trekker", "Links", "Fields"]
-
-CHAT_TIMEZONE = "Europe/Moscow"
-try:
-    tzfile = open("/etc/timezone", "r")
-    LOCAL_TIMEZONE = tzfile.read().strip()
-    tzfile.close()
-except FileNotFoundError:
-    LOCAL_TIMEZONE = CHAT_TIMEZONE
 
 bot = telebot.TeleBot(API_TOKEN)
 try:
@@ -91,7 +82,7 @@ def parse_reg():
     return len(reg)
 
 
-def strDiff(str1, str2):
+def strDiff(str1:str, str2:str):
     d = difflib.ndiff(str1, str2)
     diffs = []
     for dd in d:
@@ -100,18 +91,23 @@ def strDiff(str1, str2):
     return len(diffs) < len(str2)
 
 
-def returnVal(ap, name, value):
+def returnVal(ap:int, name:str, value:str):
     kmregexp = re.compile(r"([0-9]+)k(m|rn)")
     numregexp = re.compile(r"^([0-9]+)$")
-    if strDiff(name, "Trekker"):
+    global MODES
+    if strDiff(name, "Hacker") and "Hacks" in MODES:
+        match = numregexp.match(value)
+        if match:
+            return {"success": True, "AP": ap, "Hacks": int(value), "mode": "Hacks"}
+    if strDiff(name, "Trekker") and "Trekker" in MODES:
         match = kmregexp.match(value)
         if match:
             return {"success": True, "AP": ap, "Trekker": int(match.group(1)), "mode": "Trekker"}
-    if strDiff(name, "Connector"):
+    if strDiff(name, "Connector") and "Links" in MODES:
         match = numregexp.match(value)
         if match:
             return {"success": True, "AP": ap, "Links": int(value), "mode": "Links"}
-    if strDiff(name, "Mind Controller"):
+    if strDiff(name, "Mind Controller") and "Fields" in MODES:
         match = numregexp.match(value)
         if match:
             return {"success": True, "AP": ap, "Fields": int(value), "mode": "Fields"}
@@ -506,14 +502,7 @@ def process_photo(message):
             if message.chat.username not in ADMINS:
                 bot.send_message(message.chat.id, "У меня уже есть эти данные по этому агенту, не мухлюй!")
                 return
-        if "Trekker" in parseResult.keys():
-            bot.reply_to(message, ("Скрин сохранён, AP {:,}, Trekker {:,}. Если данные распознаны неверно - свяжитесь с организаторами.".format(parseResult["AP"], parseResult["Trekker"])))
-        else:
-            if "Links" in parseResult.keys():
-                bot.reply_to(message, ("Скрин сохранён, AP {:,}, Connector {:,}. Если данные распознаны неверно - свяжитесь с организаторами.".format(parseResult["AP"], parseResult["Links"])))
-            else:
-                if "Fields" in parseResult.keys():
-                    bot.reply_to(message, ("Скрин сохранён, AP {:,}, Mind Controller {:,}. Если данные распознаны неверно - свяжитесь с организаторами.".format(parseResult["AP"], parseResult["Fields"])))
+        bot.reply_to(message, ("Скрин сохранён, AP {:,}, {} {:,}. Если данные распознаны неверно - свяжитесь с организаторами.".format(parseResult["AP"], parseResult["mode"], parseResult[parseResult["mode"]])))
         data["counters"][agentname][datakey].update(parseResult)
         save_data()
         if data["okChat"]:
