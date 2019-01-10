@@ -8,6 +8,8 @@ import re
 import sys
 import difflib
 
+MODES = ["Trekker", "Links", "Fields"]
+
 def strDiff(str1:str, str2:str):
     d = difflib.ndiff(str1, str2)
     diffs = []
