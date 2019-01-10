@@ -107,7 +107,9 @@ def parse_image(filename:str):
             print(redactLines)
         if len(redactLines) > 1: #Found top and bottom border of opened medal
             redactVLines = find_lines(pxls, img.width, (0, redactLines[0], img.width, redactLines[1]), [redactLine], 150, 1, 0, True, False)
-            if len(redactVLines) == 2: #found left and right
+            if debugLevel >= 2:
+                print(redactVLines)
+            if len(redactVLines) in (2,3): #found left and right
                 #Extract medal name to IMG
                 medalName=img.crop((int(redactVLines[1] * 0.25 + redactVLines[0] * 0.75) + 10, redactLines[0] + 5, int(redactVLines[1] * 0.9 + redactVLines[0] * 0.1), int(redactLines[0] * 0.65 + redactLines[1] * 0.35)))
                 if debugLevel >= 1:
