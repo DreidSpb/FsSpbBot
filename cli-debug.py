@@ -155,7 +155,7 @@ def parse_image(filename:str):
 
                     #Extract AP to file (height == height of medal value)
                     apImg = img.crop((left - 5, APLine + top, img.width, APLine + medalValue.height + 5))
-                    if debugLevel >= 0:
+                    if debugLevel >= 1:
                         apImg.save("tables/" + filename + "_ap.png")
 
                     #Filter out non-yellow pixels
