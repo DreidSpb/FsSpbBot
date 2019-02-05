@@ -8,7 +8,7 @@ import re
 import sys
 import difflib
 
-MODES = ["Trekker", "Links", "Fields", "Hacks", "Liberator", "Builder", "Purifier"]
+MODES = ["Trekker", "Connector", "Mind Controller", "Hacker", "Liberator", "Builder", "Purifier"]
 
 
 def strDiff(str1:str, str2:str):
@@ -24,34 +24,14 @@ def returnVal(ap:int, level:int, name:str, value:str):
     kmregexp = re.compile(r"([0-9]+)k(m|rn|n)")
     numregexp = re.compile(r"^([0-9]+)$")
     global MODES
-    if strDiff(name, "Hacker") and "Hacks" in MODES:
-        match = numregexp.match(value)
-        if match:
-            return {"success": True, "AP": ap, "Hacks": int(value), "mode": "Hacks", "Level": level}
-    if strDiff(name, "Trekker") and "Trekker" in MODES:
-        match = kmregexp.match(value)
-        if match:
-            return {"success": True, "AP": ap, "Trekker": int(match.group(1)), "mode": "Trekker", "Level": level}
-    if strDiff(name, "Connector") and "Links" in MODES:
-        match = numregexp.match(value)
-        if match:
-            return {"success": True, "AP": ap, "Links": int(value), "mode": "Links", "Level": level}
-    if strDiff(name, "Liberator") and "Liberator" in MODES:
-        match = numregexp.match(value)
-        if match:
-            return {"success": True, "AP": ap, "Liberator": int(value), "mode": "Liberator", "Level": level}
-    if strDiff(name, "Builder") and "Builder" in MODES:
-        match = numregexp.match(value)
-        if match:
-            return {"success": True, "AP": ap, "Builder": int(value), "mode": "Builder", "Level": level}
-    if strDiff(name, "Purifier") and "Purifier" in MODES:
-        match = numregexp.match(value)
-        if match:
-            return {"success": True, "AP": ap, "Purifier": int(value), "mode": "Purifier", "Level": level}
-    if strDiff(name, "Mind Controller") and "Fields" in MODES:
-        match = numregexp.match(value)
-        if match:
-            return {"success": True, "AP": ap, "Fields": int(value), "mode": "Fields", "Level": level}
+    for mode in MODES:
+        if strDiff(name, mode):
+            if mode == "Trekker":
+                match = kmregexp.match(value)
+            else:
+                match = numregexp.match(value)
+            if match:
+                return {"success": True, "AP": ap, mode: int(value), "mode": mode, "Level": level}
     return False
 
 
@@ -101,6 +81,12 @@ def find_lines(pixels:tuple, width:int, rect:tuple, colors:list, threshhold:int,
     return results
 
 
+def doubled(img:Image):
+    d = Image.new("RGB", (img.width * 2, img.height * 2))
+    d.paste(img, (int(img.width / 2), int(img.height / 2)))
+    return d
+
+
 def crop_primeap(img:Image):
     primeBack = (11, 18, 36)
     pxls = tuple(img.getdata())
@@ -143,9 +129,7 @@ def crop_primeap(img:Image):
                     lvlImg = img.crop((backs[len(backs)-1] - 5, top[len(top)-1], int(img.width * 0.97), img.height))
                     pixels = lvlImg.getdata()
                     lvlImg.putdata([px if px[0] + px[1] + px[2] > 200 else (0,0,0) for px in pixels])
-                    lv2 = Image.new("RGB", (lvlImg.width * 2, lvlImg.height * 2))
-                    lv2.paste(lvlImg, (int(lvlImg.width / 2), int(lvlImg.height / 2)))
-                    level = pytesseract.image_to_string(lv2, config='-psm 7 -c tessedit_char_whitelist="0123456789"').replace(" ", "")
+                    level = pytesseract.image_to_string(doubled(lvlImg), config='-psm 7 -c tessedit_char_whitelist="0123456789"').replace(" ", "")
                     if level == "":
                         level = 0
                 else:
@@ -157,6 +141,7 @@ def crop_primeap(img:Image):
 def parse_image(filename:str):
     debugLevel = 0
     ap = 0
+    numregexp = re.compile(r"^([0-9]+)$")
     apregexp = re.compile(r"[^0-9]?([0-9]+)A[PF]")
     img = Image.open(filename)
     yellow = (255, 243, 140)
@@ -236,9 +221,13 @@ def parse_image(filename:str):
                         apImg.save("tables/" + filename + "_ap_filter.png")
                     #OCR, replace some letters
                     ap = pytesseract.image_to_string(apImg, config='-psm 7 -c tessedit_char_whitelist="0123456789AP.,"').replace(" ", "").replace(".", "").replace(",", "")
-                    level = pytesseract.image_to_string(lvlImg, config='-psm 7 -c tessedit_char_whitelist="0123456789YP.LV"').replace(".", " ").replace("L", "L ").replace("P", "P ").split(" ")
+                    level = pytesseract.image_to_string(lvlImg, config='-psm 7 -c tessedit_char_whitelist="0123456789YP.LV"').replace(" ", "").replace(".", " ").replace("L", "L ").replace("P", "P ").split(" ")
                     if len(level):
-                        level = int(level[len(level)-1])
+                        match = numregexp.match(level[len(level)-1])
+                        if match:
+                            level = int(level[len(level)-1])
+                        else:
+                            level = 0
                     else:
                         level = 0
                     if debugLevel >= 2:
