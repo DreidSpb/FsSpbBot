@@ -390,8 +390,10 @@ def worker(bot, images):
             message = images.pop()
             if message.content_type == "document":
                 fileID = message.document.file_id
+                ext = ".png"
             else:
                 fileID = message.photo[-1].file_id
+                ext = ".jpg"
             file_info = bot.get_file(fileID)
             downloaded_file = bot.download_file(file_info.file_path)
             f = io.BytesIO(downloaded_file)
@@ -418,7 +420,7 @@ def worker(bot, images):
                             bot.send_message(message.chat.id, "У меня уже есть эти данные по этому агенту, не мухлюй!")
                             sendReply = False
                 if sendReply:
-                    filename += "_" + parseResult["mode"] + ".jpg"
+                    filename += "_" + parseResult["mode"] + ext
                     with open(filename, "wb") as new_file:
                         new_file.write(downloaded_file)
                     bot.reply_to(message, ("Скрин сохранён, AP {:,}, {} {:,}. Если данные распознаны неверно - свяжитесь с организаторами.".format(parseResult["AP"], parseResult["mode"], parseResult[parseResult["mode"]])))
@@ -431,9 +433,9 @@ def worker(bot, images):
                 bot.reply_to(message, ("Не могу разобрать скрин, свяжитесь с организаторами!"))
                 filename += "_unknown_"
                 postfix = 0
-                while os.path.isfile(filename + str(postfix) + ".jpg"):
+                while os.path.isfile(filename + str(postfix) + ext):
                     postfix += 1
-                filename += str(postfix) + ".jpg"
+                filename += str(postfix) + ext
                 with open(filename, "wb") as new_file:
                     new_file.write(downloaded_file)
                 if data["failChat"]:
