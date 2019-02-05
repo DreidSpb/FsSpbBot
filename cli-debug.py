@@ -226,7 +226,7 @@ def parse_full(filename:str):
                             if name[:len(string)] == string:
                                 stringName = wantStrings[string]
                                 val = pytesseract.image_to_string(yellowImg, config='-psm 7 -c tessedit_char_whitelist="0123456789.,XMUskm"').replace(" ", "").replace(".", "").replace(",", "")
-                                if stringName in ["Recharger", "XM"]:
+                                if stringName in ["Recharger", "XM Collected"]:
                                     match = xmregexp.match(val)
                                 elif stringName == "Trekker":
                                     match = kmregexp.match(val)
