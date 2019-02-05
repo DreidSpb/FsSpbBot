@@ -21,6 +21,7 @@ TEST_MODE = False #Allow send same data
 UNKNOWN_AGENTS = True #Get data from unregistered agents
 MODES = ["Trekker"] #List medals for current event
 THREAD_COUNT = 4 #Count of worker threads
+#MODES = ["Explorer", "XM Collected", "Trekker", "Builder", "Connector", "Mind Controller", "Illuminator", "Recharger", "Liberator", "Pioneer", "Engineer", "Purifier", "Portal Destroy", "Links Destroy", "Fields Destroy", "SpecOps", "Hacker", "Translator"]
 
 bot = telebot.TeleBot(API_TOKEN)
 try:
@@ -104,17 +105,21 @@ def strDiff(str1:str, str2:str):
 def returnVal(ap:int, level:int, name:str, value:str):
     kmregexp = re.compile(r"([0-9]+)k(m|rn|n)")
     numregexp = re.compile(r"^([0-9]+)$")
+    xmregexp = re.compile(r"([0-9]+)XM")
+    muregexp = re.compile(r"([0-9]+)MUs")
     global MODES
     for mode in MODES:
         if strDiff(name, mode):
             if mode == "Trekker":
                 match = kmregexp.match(value)
-                if match:
-                    return {"success": True, "AP": ap, mode: int(match.group(1)), "mode": mode, "Level": level}
+            elif stringName == "Recharger":
+                match = xmregexp.match(val)
+            elif stringName == "Illuminator":
+                match = muregexp.match(val)
             else:
                 match = numregexp.match(value)
-                if match:
-                    return {"success": True, "AP": ap, mode: int(value), "mode": mode, "Level": level}
+            if match:
+                return {"success": True, "AP": ap, mode: int(match.group(1)), "mode": mode, "Level": level}
     return False
 
 
@@ -221,6 +226,111 @@ def crop_primeap(img:Image):
     return []
 
 
+def parse_full(img:Image):
+    global MODES
+    strings = {}
+    strings["Explorer"] = "Unique Portals Visited"
+    strings["XM Collected"] = "XM Collected"
+    strings["Trekker"] = "Distance Walked"
+    strings["Builder"] = "Resonators Deployed"
+    strings["Connector"] = "Links Created"
+    strings["Mind Controller"] = "Control Fields Created"
+    strings["Illuminator"] = "Mind Units Captured"
+    strings["Recharger"] = "XM Recharged"
+    strings["Liberator"] = "Portals Captured"
+    strings["Pioneer"] = "Unique Portals Captured"
+    strings["Engineer"] = "Mods Deployed"
+    strings["Purifier"] = "Resonators Destroyed"
+    strings["Portal Destroy"] = "Portals Neutralized"
+    strings["Links Destroy"] = "Enemy Links Destroyed"
+    strings["Fields Destroy"] = "Enemy Fields Destroyed"
+    strings["SpecOps"] = "Unique Missions Completed"
+    strings["Hacker"] = "Hacks"
+    strings["Translator"] = "Glyph Hack Points"
+    wantStrings = {}
+    for mode in MODES:
+        wantStrings[strings[mode]] = mode
+    gotStrings = {}
+    apregexp = re.compile(r"[^0-9]?([0-9]+)AP")
+    numregexp = re.compile(r"^([0-9]+)$")
+    kmregexp = re.compile(r"([0-9]+)km")
+    xmregexp = re.compile(r"([0-9]+)XM")
+    muregexp = re.compile(r"([0-9]+)MUs")
+    pxls = tuple(img.getdata())
+    yellow = (255, 243, 148)
+    green = (0, 134, 123)
+    APLines = find_lines(pxls, img.width, (int(img.width * 0.3), 0, int(img.width * 0.9), int(img.height * 0.4)), [yellow, green], 30, 3, 1, False)
+    APLine = APLines[0] if len(APLines) else False
+    endLvl = APLine - 4
+    startLvl = find_lines(pxls, img.width, (int(img.width * 0.3), 0, int(img.width * 0.9), APLine), [(0, 0, 0)], 30, 2, 0, False)
+    if len(startLvl) > 1:
+        startLvl = startLvl[len(startLvl) - 2]
+        startAP = find_lines(pxls, img.width, (int(img.width * 0.3), APLine, int(img.width * 0.9), int(img.height * 0.4)), [(0, 0, 0)], 30, 3, 1, False)
+        if len(startAP):
+            startAP = startAP[0]
+        else:
+            return {"filename": filename, "success": False}
+        endAP = startAP + endLvl - startLvl
+        left = int(img.width / 2)
+        currpx = img.width * APLine + left
+        while left > 0 and pxls[currpx][0] + pxls[currpx][1] + pxls[currpx][2] > 150:
+            currpx -= 1
+            left -= 1
+        apImg = img.crop((left, startAP, int(img.width * 0.9), endAP))
+        pixels = apImg.getdata()
+        apImg.putdata([px if px[0] > px[2] else (0,0,0) for px in pixels])
+        ap = pytesseract.image_to_string(apImg, config='-psm 7 -c tessedit_char_whitelist="0123456789AP.,"').replace(" ", "").replace(".", "").replace(",", "")
+        match = apregexp.match(ap)
+        if match: #Got AP!
+            gotStrings["AP"] = int(match.group(1))
+            lvlImg = img.crop((int(img.width * 0.21), startLvl, int(img.width * 0.9), endLvl))
+            pixels = lvlImg.getdata()
+            lvlImg.putdata([px if px[0] > px[2] else (0,0,0) for px in pixels])
+            level = pytesseract.image_to_string(lvlImg, config='-psm 7 -c tessedit_char_whitelist="0123456789YP.LV"').replace(" ", "").replace(".", " ").replace("L", "L ").replace("P", "P ").split(" ")
+            gotStrings["Level"] = 0
+            if len(level):
+                match = numregexp.match(level[len(level)-1])
+                if match:
+                    gotStrings["Level"] = int(level[len(level)-1])
+            yellowLine = find_lines(pxls, img.width, (int(img.width * 0.3), endAP, int(img.width * 0.7), int(img.height * 0.95)), [(58, 49, 25)], 70, 15, 1)
+            if len(yellowLine):
+                topLine = yellowLine[0]
+                statLines = find_lines(pxls, img.width, (int(img.width * 0.05), topLine, int(img.width * 0.9), img.height), [(0, 0, 0)], 30, 5, 0, False)
+                for i in range(len(statLines)):
+                    if len(wantStrings):
+                        bottomLine = statLines[i]
+                        blueImg = img.crop((0, topLine, int(img.width * 0.8), bottomLine))
+                        pixels = blueImg.getdata()
+                        blueImg.putdata([px if px[0] < px[2] else (0,0,0) for px in pixels])
+                        yellowImg = img.crop((int(img.width * 0.5), topLine, img.width, bottomLine))
+                        pixels = yellowImg.getdata()
+                        yellowImg.putdata([px if px[0] > px[2] else (0,0,0) for px in pixels])
+                        topLine = bottomLine + 2
+                        name = pytesseract.image_to_string(blueImg, config='-psm 7')
+                        for string in wantStrings.keys():
+                            if name[:len(string)] == string:
+                                stringName = wantStrings[string]
+                                val = pytesseract.image_to_string(yellowImg, config='-psm 7 -c tessedit_char_whitelist="0123456789.,XMUskm"').replace(" ", "").replace(".", "").replace(",", "")
+                                if stringName in ["Recharger", "XM"]:
+                                    match = xmregexp.match(val)
+                                elif stringName == "Trekker":
+                                    match = kmregexp.match(val)
+                                elif stringName == "Illuminator":
+                                    match = muregexp.match(val)
+                                else:
+                                    match = numregexp.match(val)
+                                if match:
+                                    gotStrings[stringName] = int(match.group(1))
+                                    del wantStrings[string]
+                                    break
+    if len(wantStrings) == 0:
+        gotStrings["mode"] = "Full"
+        gotStrings["Full"] = True
+        gotStrings["success"] = True
+        return gotStrings
+    return {"mode": "Full", "filename": filename, "success": False}
+
+
 def parse_image(img:Image, filename):
     debugLevel = 0
     ap = 0
@@ -321,6 +431,10 @@ def parse_image(img:Image, filename):
                         name = pytesseract.image_to_string(medalName).split("\n")[0]
                         if strDiff(name, "Trekker"):
                             value = pytesseract.image_to_string(medalValue, config='-psm 7 -c tessedit_char_whitelist="0123456789km.,"').replace(" ", "").replace(".", "").replace(",", "")
+                        elif strDiff(name, "Recharger"):
+                            value = pytesseract.image_to_string(medalValue, config='-psm 7 -c tessedit_char_whitelist="0123456789XM.,"').replace(" ", "").replace(".", "").replace(",", "")
+                        elif strDiff(name, "Illuminator"):
+                            value = pytesseract.image_to_string(medalValue, config='-psm 7 -c tessedit_char_whitelist="0123456789MUs.,"').replace(" ", "").replace(".", "").replace(",", "")
                         else:
                             value = pytesseract.image_to_string(medalValue, config='-psm 7 -c tessedit_char_whitelist="0123456789.,"').replace(" ", "").replace(".", "").replace(",", "")
                         if debugLevel >= 2:
@@ -398,7 +512,11 @@ def worker(bot, images):
             downloaded_file = bot.download_file(file_info.file_path)
             f = io.BytesIO(downloaded_file)
             f.seek(0)
-            parseResult = parse_image(Image.open(f), str(fileID) + ".png")
+            img = Image.open(f)
+            if message.content_type == "document" and img.height > img.width * 2.5:
+                parseResult = parse_full(img)
+            else:
+                parseResult = parse_image(img, str(fileID) + ".png")
             username = message.chat.username
             if message.forward_from:
                 username = message.forward_from.username
@@ -423,7 +541,14 @@ def worker(bot, images):
                     filename += "_" + parseResult["mode"] + ext
                     with open(filename, "wb") as new_file:
                         new_file.write(downloaded_file)
-                    bot.reply_to(message, ("Скрин сохранён, AP {:,}, {} {:,}. Если данные распознаны неверно - свяжитесь с организаторами.".format(parseResult["AP"], parseResult["mode"], parseResult[parseResult["mode"]])))
+                    if parseResult["mode"] == "Full":
+                        txt = "Скрин сохранён\nАгент: %s\nAP: %s\nLevel: %s"%(agentname, parseResult["AP"], parseResult["Level"])
+                        for mode in MODES:
+                            txt += "{}: {:,}.\n".format(mode, parseResult[mode])
+                        txt += "Если данные распознаны неверно - свяжитесь с организаторами."
+                        bot.reply_to(message, txt)
+                    else:
+                        bot.reply_to(message, ("Скрин сохранён, AP {:,}, {} {:,}. Если данные распознаны неверно - свяжитесь с организаторами.".format(parseResult["AP"], parseResult["mode"], parseResult[parseResult["mode"]])))
                     data["counters"][agentname][datakey].update(parseResult)
                     save_data()
                     if data["okChat"]:
