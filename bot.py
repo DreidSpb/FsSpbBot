@@ -388,7 +388,10 @@ def worker(bot, images):
         time.sleep(0.1)
         while len(images):
             message = images.pop()
-            fileID = message.photo[-1].file_id
+            if message.content_type == "document":
+                fileID = message.document.file_id
+            else:
+                fileID = message.photo[-1].file_id
             file_info = bot.get_file(fileID)
             downloaded_file = bot.download_file(file_info.file_path)
             f = io.BytesIO(downloaded_file)
@@ -642,6 +645,9 @@ def process_others(message):
             new_file.write(downloaded_file)
         reg_count = parse_reg()
         bot.reply_to(message, "Рега принята, записей: %s"%reg_count)
+        return
+    if data["getStart"] or data["getEnd"]:
+        process_photo(message)
         return
     bot.reply_to(message, ("Что это ещё за странный файл? Я от тебя ничего не жду"))
 
