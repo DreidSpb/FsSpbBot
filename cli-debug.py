@@ -28,10 +28,12 @@ def returnVal(ap:int, level:int, name:str, value:str):
         if strDiff(name, mode):
             if mode == "Trekker":
                 match = kmregexp.match(value)
+                if match:
+                    return {"success": True, "AP": ap, mode: int(match.group(1)), "mode": mode, "Level": level}
             else:
                 match = numregexp.match(value)
-            if match:
-                return {"success": True, "AP": ap, mode: int(value), "mode": mode, "Level": level}
+                if match:
+                    return {"success": True, "AP": ap, mode: int(value), "mode": mode, "Level": level}
     return False
 
 
