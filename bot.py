@@ -20,7 +20,7 @@ ADMINS = [] #Put telegram-names of admins here
 TEST_MODE = False #Allow send same data
 UNKNOWN_AGENTS = True #Get data from unregistered agents
 MODES = ["Trekker"] #List medals for current event
-THREAD_COUNT = 4 #Count of worker threads (+1 main thread +1 queue manager)
+THREAD_COUNT = 4 #Count of worker threads
 
 bot = telebot.TeleBot(API_TOKEN)
 try:
@@ -50,7 +50,8 @@ datafile.close()
 datafile = open("base.txt", "w")
 json.dump(data, datafile, ensure_ascii=False)
 datafile.close()
-parseData = []
+nextThread = 0
+images = []
 
 
 
@@ -382,11 +383,10 @@ def parse_image(img:Image, filename):
     return {"filename": filename, "success": False}
 
 
-def worker(images, replies):
-    global bot
+def worker(bot, images):
     while True:
         time.sleep(0.1)
-        if len(images):
+        while len(images):
             message = images.pop()
             fileID = message.photo[-1].file_id
             file_info = bot.get_file(fileID)
@@ -394,99 +394,47 @@ def worker(images, replies):
             f = io.BytesIO(downloaded_file)
             f.seek(0)
             parseResult = parse_image(Image.open(f), str(fileID) + ".png")
-            replies.insert(0, (downloaded_file, message, parseResult))
-
-
-def queueManager():
-    global bot
-    global data
-    global parseData
-    images = []
-    replies = []
-    nextImage = 0
-    for i in range(THREAD_COUNT):
-        images.append([])
-        replies.append([])
-        _thread.start_new_thread(worker, (images[i], replies[i]))
-    while True:
-        time.sleep(0.1)
-        while len(parseData):
-            message = parseData.pop()
             username = message.chat.username
             if message.forward_from:
                 username = message.forward_from.username
+            agentname = username
             if username.lower() in data["reg"].keys():
                 agentname = data["reg"][username.lower()]
+            if data["getStart"]:
+                datakey = "start"
             else:
-                agentname = username
-                if not UNKNOWN_AGENTS:
-                    bot.send_message(message.chat.id, ("Какой такой %s? В списке зарегистрированных у меня таких нет."%username))
-                    agentname = ""
-            if len(agentname) and not TEST_MODE:
-                if agentname in data["counters"].keys():
-                    if data["getStart"]:
-                        datakey = "start"
-                    else:
-                        datakey = "end"
-                    if datakey in data["counters"][agentname].keys():
-                        dataKeys = data["counters"][agentname][datakey].keys()
-                        allKeys = True
-                        if message.chat.username not in ADMINS:
-                            for mode in MODES:
-                                if mode not in dataKeys:
-                                    allKeys = False
-                            if allKeys:
-                                bot.send_message(message.chat.id, "У меня уже есть данные по этому агенту, не мухлюй!")
-                                agentname = ""
-            if len(agentname):
-                images[nextImage].insert(0, message)
-                nextImage += 1
-                if nextImage == THREAD_COUNT:
-                    nextImage = 0
-        for reply in replies:
-            while len(reply):
-                (downloaded_file, message, parseResult) = reply.pop()
-                username = message.chat.username
-                if message.forward_from:
-                    username = message.forward_from.username
-                agentname = username
-                if username.lower() in data["reg"].keys():
-                    agentname = data["reg"][username.lower()]
-                if data["getStart"]:
-                    datakey = "start"
-                else:
-                    datakey = "end"
-                filename = "Screens/" + agentname + "_" + datakey
-                if parseResult["success"]:
-                    sendReply = True
-                    if agentname not in data["counters"].keys():
-                        data["counters"][agentname] = {"start": {}, "end": {}}
-                    if parseResult["mode"] in data["counters"][agentname][datakey].keys():
-                        if message.chat.username not in ADMINS:
-                            if not TEST_MODE:
-                                bot.send_message(message.chat.id, "У меня уже есть эти данные по этому агенту, не мухлюй!")
-                                sendReply = False
-                    if sendReply:
-                        filename += "_" + parseResult["mode"] + ".jpg"
-                        with open(filename, "wb") as new_file:
-                            new_file.write(downloaded_file)
-                        bot.reply_to(message, ("Скрин сохранён, AP {:,}, {} {:,}. Если данные распознаны неверно - свяжитесь с организаторами.".format(parseResult["AP"], parseResult["mode"], parseResult[parseResult["mode"]])))
-                        data["counters"][agentname][datakey].update(parseResult)
-                        save_data()
-                        if data["okChat"]:
-                            bot.forward_message(data["okChat"], message.chat.id, message.message_id)
-                            bot.send_message(data["okChat"], "Агент {}, AP {:,}, {} {:,}".format(agentname, parseResult["AP"], parseResult["mode"], parseResult[parseResult["mode"]]))
-                else:
-                    bot.reply_to(message, ("Не могу разобрать скрин, свяжитесь с организаторами!"))
-                    filename += "_unknown_"
-                    postfix = 0
-                    while os.path.isfile(filename + str(postfix) + ".jpg"):
-                        postfix += 1
-                    filename += str(postfix) + ".jpg"
+                datakey = "end"
+            filename = "Screens/" + agentname + "_" + datakey
+            if parseResult["success"]:
+                sendReply = True
+                if agentname not in data["counters"].keys():
+                    data["counters"][agentname] = {"start": {}, "end": {}}
+                if parseResult["mode"] in data["counters"][agentname][datakey].keys():
+                    if message.chat.username not in ADMINS:
+                        if not TEST_MODE:
+                            bot.send_message(message.chat.id, "У меня уже есть эти данные по этому агенту, не мухлюй!")
+                            sendReply = False
+                if sendReply:
+                    filename += "_" + parseResult["mode"] + ".jpg"
                     with open(filename, "wb") as new_file:
                         new_file.write(downloaded_file)
-                    if data["failChat"]:
-                        bot.forward_message(data["failChat"], message.chat.id, message.message_id)
+                    bot.reply_to(message, ("Скрин сохранён, AP {:,}, {} {:,}. Если данные распознаны неверно - свяжитесь с организаторами.".format(parseResult["AP"], parseResult["mode"], parseResult[parseResult["mode"]])))
+                    data["counters"][agentname][datakey].update(parseResult)
+                    save_data()
+                    if data["okChat"]:
+                        bot.forward_message(data["okChat"], message.chat.id, message.message_id)
+                        bot.send_message(data["okChat"], "Агент {}, AP {:,}, {} {:,}".format(agentname, parseResult["AP"], parseResult["mode"], parseResult[parseResult["mode"]]))
+            else:
+                bot.reply_to(message, ("Не могу разобрать скрин, свяжитесь с организаторами!"))
+                filename += "_unknown_"
+                postfix = 0
+                while os.path.isfile(filename + str(postfix) + ".jpg"):
+                    postfix += 1
+                filename += str(postfix) + ".jpg"
+                with open(filename, "wb") as new_file:
+                    new_file.write(downloaded_file)
+                if data["failChat"]:
+                    bot.forward_message(data["failChat"], message.chat.id, message.message_id)
 
 
 def restricted(func):
@@ -645,12 +593,42 @@ def process_msg(message):
 
 @bot.message_handler(func=lambda message: True, content_types=["photo"])
 def process_photo(message):
-    global parseData
+    global images
+    global nextThread
     zero_reg(message.chat.id)
     if not data["getStart"] and not data["getEnd"]:
         bot.send_message(message.chat.id, ("Я вообще-то сейчас не принимаю скрины!"))
         return
-    parseData.insert(0, message)
+    username = message.chat.username
+    if message.forward_from:
+        username = message.forward_from.username
+    if username.lower() in data["reg"].keys():
+        agentname = data["reg"][username.lower()]
+    else:
+        agentname = username
+        if not UNKNOWN_AGENTS:
+            bot.send_message(message.chat.id, ("Какой такой %s? В списке зарегистрированных у меня таких нет."%username))
+            return
+    if not TEST_MODE:
+        if agentname in data["counters"].keys():
+            if data["getStart"]:
+                datakey = "start"
+            else:
+                datakey = "end"
+            if datakey in data["counters"][agentname].keys():
+                dataKeys = data["counters"][agentname][datakey].keys()
+                allKeys = True
+                if message.chat.username not in ADMINS:
+                    for mode in MODES:
+                        if mode not in dataKeys:
+                            allKeys = False
+                    if allKeys:
+                        bot.send_message(message.chat.id, "У меня уже есть данные по этому агенту, не мухлюй!")
+                        return
+    images[nextThread].insert(0, message)
+    nextThread += 1
+    if nextThread == THREAD_COUNT:
+        nextThread = 0
 
 
 @bot.message_handler(func=lambda message: True, content_types=["document"])
@@ -669,5 +647,7 @@ def process_others(message):
 
 
 if __name__ == "__main__":
-    _thread.start_new_thread(queueManager, ())
+    for i in range(THREAD_COUNT):
+        images.append([])
+        _thread.start_new_thread(worker, (bot, images[i]))
     bot.polling(none_stop=True)
