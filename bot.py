@@ -112,9 +112,9 @@ def returnVal(ap:int, level:int, name:str, value:str):
         if strDiff(name, mode):
             if mode == "Trekker":
                 match = kmregexp.match(value)
-            elif stringName == "Recharger":
+            elif mode == "Recharger":
                 match = xmregexp.match(val)
-            elif stringName == "Illuminator":
+            elif mode == "Illuminator":
                 match = muregexp.match(val)
             else:
                 match = numregexp.match(value)
