@@ -372,7 +372,7 @@ def parse_image(filename:str):
                     primeAPImg.save("tables/" + filename + "_ap.png")
 
                 #Parse AP data
-                apData = crop_primeap(primeAPImg);
+                apData = crop_primeap(primeAPImg)
                 if len(apData):
                     #OCR AP, replace letters
                     ap = apData[0]
