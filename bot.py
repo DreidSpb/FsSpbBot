@@ -47,6 +47,8 @@ if not "reg" in data.keys():
     data["reg"] = {}
 if not "counters" in data.keys():
     data["counters"] = {}
+if not "tlgids" in data.keys():
+    data["tlgids"] = {}
 datafile.close()
 datafile = open("base.txt", "w")
 json.dump(data, datafile, ensure_ascii=False)
@@ -549,6 +551,7 @@ def worker(bot, images):
                         bot.reply_to(message, txt)
                     else:
                         bot.reply_to(message, ("Скрин сохранён, AP {:,}, {} {:,}. Если данные распознаны неверно - свяжитесь с организаторами.".format(parseResult["AP"], parseResult["mode"], parseResult[parseResult["mode"]])))
+                    data["tlgids"][message.chat.id] = agentname
                     data["counters"][agentname][datakey].update(parseResult)
                     save_data()
                     if data["okChat"]:
@@ -623,6 +626,14 @@ def setfail(message):
     bot.reply_to(message, ("Теперь я буду сюда форвардить нераспознанное"))
 
 
+@bot.message_handler(commands=["sendAll"])
+@restricted
+def sendall(message):
+    for i in data["tlgids"].keys():
+        bot.send_message(i, "Агент %s, вам сообщение от организаторов:\n"%(data["tlgids"][i]) + message.text[message.text.find(' ')+1:])
+    bot.reply_to(message, ("Отправил"))
+
+
 @bot.message_handler(commands=["reset"])
 @restricted
 def forget(message):
@@ -634,6 +645,7 @@ def forget(message):
     data["failChat"] = 0
     data["reg"] = {}
     data["counters"] = {}
+    data["tlgids"] = {}
     data["welcome"] = "Привет"
     save_data()
     bot.reply_to(message, ("Всё, я всё забыл :)"))
