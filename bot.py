@@ -544,7 +544,7 @@ def worker(bot, images):
                     with open(filename, "wb") as new_file:
                         new_file.write(downloaded_file)
                     if parseResult["mode"] == "Full":
-                        txt = "Скрин сохранён\nАгент: %s\nAP: %s\nLevel: %s"%(agentname, parseResult["AP"], parseResult["Level"])
+                        txt = "Скрин сохранён\nАгент: %s\nAP: %s\nLevel: %s\n"%(agentname, parseResult["AP"], parseResult["Level"])
                         for mode in MODES:
                             txt += "{}: {:,}.\n".format(mode, parseResult[mode])
                         txt += "Если данные распознаны неверно - свяжитесь с организаторами."
@@ -698,7 +698,7 @@ def getresult(message):
     txt += "Agent,Start_AP,Start_LVL"
     for mode in MODES:
         txt += ',"Start_%s"'%mode
-    txt += ",End_AP,Start_LVL"
+    txt += ",End_AP,End_LVL"
     for mode in MODES:
         txt += ',"End_%s"'%mode
     txt += "\n"
