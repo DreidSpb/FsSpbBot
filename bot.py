@@ -115,9 +115,9 @@ def returnVal(ap:int, level:int, name:str, value:str):
             if mode == "Trekker":
                 match = kmregexp.match(value)
             elif mode == "Recharger":
-                match = xmregexp.match(val)
+                match = xmregexp.match(value)
             elif mode == "Illuminator":
-                match = muregexp.match(val)
+                match = muregexp.match(value)
             else:
                 match = numregexp.match(value)
             if match:
