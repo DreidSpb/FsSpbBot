@@ -768,9 +768,8 @@ def process_photo(message):
                         bot.send_message(message.chat.id, "У меня уже есть данные по этому агенту, не мухлюй!")
                         return
     images[nextThread].insert(0, message)
-    nextThread += 1
-    if nextThread == THREAD_COUNT:
-        nextThread = 0
+    nextThread = (nextThread + 1) % THREAD_COUNT
+
 
 
 @bot.message_handler(func=lambda message: True, content_types=["document"])
