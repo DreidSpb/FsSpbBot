@@ -581,18 +581,18 @@ def restricted(func):
 
 
 @bot.message_handler(commands=["start"])
-def send_welcome(message):
+def cmd_start(message):
     bot.reply_to(message, (data["welcome"]))
 
 
 @bot.message_handler(commands=["help"])
-def send_welcome(message):
+def cmd_help(message):
     bot.reply_to(message, ("loadreg - (for admins) Load list of registered agents\nreg - (for admins) Add one agent (/reg AgentName TelegramName)\nstartevent - (for admins) Begin taking start screenshots\nendevent - (for admins) Begin taking final screenshots\nreset - (for admins) Clear all data and settings\nsetokchat - (for admins) Set this chat as destination for parsed screens\nsetfailchat - (for admins) Set this chat as destination for NOT parsed screens\nresult - (for admins) Get result table file\nstop - (for admins) Stop taking events\nsetwelcome - (for admins) Set welcome message"))
 
 
 @bot.message_handler(commands=["loadreg"])
 @restricted
-def loadreg(message):
+def cmd_loadreg(message):
     data["regchat"] = message.chat.id
     save_data()
     bot.reply_to(message, ("Грузи файло"))
@@ -600,7 +600,7 @@ def loadreg(message):
 
 @bot.message_handler(commands=["setwelcome"])
 @restricted
-def setwelcome(message):
+def cmd_setwelcome(message):
     data["welcome"] = message.text[str(message.text + " ").find(" "):]
     save_data()
     bot.send_message(message.chat.id, ("Обновил приветствие"))
@@ -608,7 +608,7 @@ def setwelcome(message):
 
 @bot.message_handler(commands=["setokchat"])
 @restricted
-def setok(message):
+def cmd_setokchat(message):
     if data["okChat"] != 0 and data["okChat"] != message.chat.id:
         bot.send_message(data["okChat"], "Больше я распознанное сюда не шлю")
     data["okChat"] = message.chat.id
@@ -618,7 +618,7 @@ def setok(message):
 
 @bot.message_handler(commands=["setfailchat"])
 @restricted
-def setfail(message):
+def cmd_setfailchat(message):
     if data["failChat"] != 0 and data["failChat"] != message.chat.id:
         bot.send_message(data["failChat"], "Больше я НЕраспознанное сюда не шлю")
     data["failChat"] = message.chat.id
@@ -628,7 +628,7 @@ def setfail(message):
 
 @bot.message_handler(commands=["sendAll"])
 @restricted
-def sendall(message):
+def cmd_send_all(message):
     for i in data["tlgids"].keys():
         bot.send_message(i, "Агент %s, вам сообщение от организаторов:\n"%(data["tlgids"][i]) + message.text[message.text.find(' ')+1:])
     bot.reply_to(message, ("Отправил"))
@@ -636,7 +636,7 @@ def sendall(message):
 
 @bot.message_handler(commands=["reset"])
 @restricted
-def forget(message):
+def cmd_reset(message):
     data.clear()
     data["regchat"] = 0
     data["getStart"] = False
@@ -653,7 +653,7 @@ def forget(message):
 
 @bot.message_handler(commands=["reg"])
 @restricted
-def addreg(message):
+def cmd_reg(message):
     names = message.text.replace("@", "").split(" ")
     if (len(names) == 3):
         data["reg"][names[2].lower()] = names[1]
@@ -666,7 +666,7 @@ def addreg(message):
 
 @bot.message_handler(commands=["startevent"])
 @restricted
-def setstart(message):
+def cmd_startevent(message):
     data["getStart"] = True
     data["getEnd"] = False
     save_data()
@@ -675,7 +675,7 @@ def setstart(message):
 
 @bot.message_handler(commands=["endevent"])
 @restricted
-def setend(message):
+def cmd_endevent(message):
     data["getStart"] = False
     data["getEnd"] = True
     save_data()
@@ -684,7 +684,7 @@ def setend(message):
 
 @bot.message_handler(commands=["stop"])
 @restricted
-def setstop(message):
+def cmd_stop(message):
     data["getStart"] = False
     data["getEnd"] = False
     save_data()
@@ -693,7 +693,7 @@ def setstop(message):
 
 @bot.message_handler(commands=["result"])
 @restricted
-def getresult(message):
+def cmd_result(message):
     txt = ""
     txt += "Agent,Start_AP,Start_LVL"
     for mode in MODES:
