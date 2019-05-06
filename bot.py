@@ -590,19 +590,18 @@ def restricted(func):
 
 
 @bot.message_handler(commands=["start"])
-def send_welcome(message):
+def cmd_start(message):
     bot.reply_to(message, (data["welcome"]))
 
 
 @bot.message_handler(commands=["help"])
-def send_welcome(message):
-    bot.reply_to(message, (
-        "loadreg - (for admins) Load list of registered agents\nreg - (for admins) Add one agent (/reg AgentName TelegramName)\nstartevent - (for admins) Begin taking start screenshots\nendevent - (for admins) Begin taking final screenshots\nreset - (for admins) Clear all data and settings\nsetokchat - (for admins) Set this chat as destination for parsed screens\nsetfailchat - (for admins) Set this chat as destination for NOT parsed screens\nresult - (for admins) Get result table file\nstop - (for admins) Stop taking events\nsetwelcome - (for admins) Set welcome message"))
+def cmd_help(message):
+    bot.reply_to(message, ("loadreg - (for admins) Load list of registered agents\nreg - (for admins) Add one agent (/reg AgentName TelegramName)\nstartevent - (for admins) Begin taking start screenshots\nendevent - (for admins) Begin taking final screenshots\nreset - (for admins) Clear all data and settings\nsetokchat - (for admins) Set this chat as destination for parsed screens\nsetfailchat - (for admins) Set this chat as destination for NOT parsed screens\nresult - (for admins) Get result table file\nstop - (for admins) Stop taking events\nsetwelcome - (for admins) Set welcome message"))
 
 
 @bot.message_handler(commands=["loadreg"])
 @restricted
-def loadreg(message):
+def cmd_loadreg(message):
     data["regchat"] = message.chat.id
     save_data()
     bot.reply_to(message, "Грузи файло")
@@ -610,7 +609,7 @@ def loadreg(message):
 
 @bot.message_handler(commands=["setwelcome"])
 @restricted
-def setwelcome(message):
+def cmd_setwelcome(message):
     data["welcome"] = message.text[str(message.text + " ").find(" "):]
     save_data()
     bot.send_message(message.chat.id, "Обновил приветствие")
@@ -618,7 +617,7 @@ def setwelcome(message):
 
 @bot.message_handler(commands=["setokchat"])
 @restricted
-def setok(message):
+def cmd_setokchat(message):
     if data["okChat"] != 0 and data["okChat"] != message.chat.id:
         bot.send_message(data["okChat"], "Больше я распознанное сюда не шлю")
     data["okChat"] = message.chat.id
@@ -628,7 +627,7 @@ def setok(message):
 
 @bot.message_handler(commands=["setfailchat"])
 @restricted
-def setfail(message):
+def cmd_setfailchat(message):
     if data["failChat"] != 0 and data["failChat"] != message.chat.id:
         bot.send_message(data["failChat"], "Больше я НЕраспознанное сюда не шлю")
     data["failChat"] = message.chat.id
@@ -638,7 +637,7 @@ def setfail(message):
 
 @bot.message_handler(commands=["sendAll"])
 @restricted
-def sendall(message):
+def cmd_send_all(message):
     text = message.text
     offset = 0
     for entity in message.entities:
@@ -661,7 +660,7 @@ def sendall(message):
 
 @bot.message_handler(commands=["reset"])
 @restricted
-def forget(message):
+def cmd_reset(message):
     data.clear()
     data["regchat"] = 0
     data["getStart"] = False
@@ -678,7 +677,7 @@ def forget(message):
 
 @bot.message_handler(commands=["reg"])
 @restricted
-def addreg(message):
+def cmd_reg(message):
     names = message.text.replace("@", "").split(" ")
     if len(names) == 3:
         data["reg"][names[2].lower()] = names[1]
@@ -691,7 +690,7 @@ def addreg(message):
 
 @bot.message_handler(commands=["startevent"])
 @restricted
-def setstart(message):
+def cmd_startevent(message):
     data["getStart"] = True
     data["getEnd"] = False
     save_data()
@@ -700,7 +699,7 @@ def setstart(message):
 
 @bot.message_handler(commands=["endevent"])
 @restricted
-def setend(message):
+def cmd_endevent(message):
     data["getStart"] = False
     data["getEnd"] = True
     save_data()
@@ -709,7 +708,7 @@ def setend(message):
 
 @bot.message_handler(commands=["stop"])
 @restricted
-def setstop(message):
+def cmd_stop(message):
     data["getStart"] = False
     data["getEnd"] = False
     save_data()
@@ -717,7 +716,7 @@ def setstop(message):
 
 
 @bot.message_handler(commands=["team"])
-def setteam(message):
+def cmd_team(message):
     for t in data["teams"]:
         if message.chat.id in data["teams"][t]:
             data["teams"][t].remove(message.chat.id)
@@ -734,7 +733,7 @@ def setteam(message):
 
 
 @bot.message_handler(commands=["mystats"])
-def getme(message):
+def cmd_mystats(message):
     if str(message.chat.id) not in data["tlgids"]:
         bot.reply_to(message, "Ты хто?")
         return
@@ -757,7 +756,7 @@ def getme(message):
 
 
 @bot.message_handler(commands=["teamstats"])
-def getme(message):
+def cmd_teamstats(message):
     if str(message.chat.id) not in data["tlgids"]:
         bot.reply_to(message, "Ты хто?")
         return
@@ -790,7 +789,7 @@ def getme(message):
 
 @bot.message_handler(commands=["result"])
 @restricted
-def getresult(message):
+def cmd_result(message):
     arr = ["Agent"]
     for field in IMPORT_DATA.keys():
         arr.append(field)
@@ -877,9 +876,8 @@ def process_photo(message):
                         bot.send_message(message.chat.id, "У меня уже есть данные по этому агенту, не мухлюй!")
                         return
     images[nextThread].insert(0, message)
-    nextThread += 1
-    if nextThread == THREAD_COUNT:
-        nextThread = 0
+    nextThread = (nextThread + 1) % THREAD_COUNT
+
 
 
 @bot.message_handler(func=lambda message: True, content_types=["document"])
