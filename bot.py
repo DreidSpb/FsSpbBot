@@ -56,6 +56,8 @@ if "counters" not in data.keys():
     data["counters"] = {}
 if "tlgids" not in data.keys():
     data["tlgids"] = {}
+if "regData" not in data.keys():
+    data["regData"] = {}
 if "teams" not in data.keys():
     data["teams"] = {}
 datafile.close()
@@ -670,6 +672,7 @@ def cmd_reset(message):
     data["reg"] = {}
     data["counters"] = {}
     data["tlgids"] = {}
+    data["regData"] = {}
     data["welcome"] = "Привет"
     save_data()
     bot.reply_to(message, "Всё, я всё забыл :)")
