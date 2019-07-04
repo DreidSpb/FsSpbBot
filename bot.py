@@ -13,22 +13,58 @@ import time
 import io
 import os
 import _thread
+import datetime
+import pytz
 
 # telebot.apihelper.proxy = {'https': 'socks5h://login:password@host:port'}
+EVENT_TIMEZONE = 'Europe/Moscow' # Put event timezone here
 API_TOKEN = ""  # Put bot token here
 ADMINS = []  # Put telegram-names of admins here
 TEST_MODE = False  # Allow send same data
 UNKNOWN_AGENTS = True  # Get data from unregistered agents
 MODES = ["Trekker"]  # List medals for current event
 THREAD_COUNT = 4  # Count of worker threads
-IMPORT_KEY = 3  # Column of agent name in reg file
-IMPORT_VAL = 2  # Column of telegram name in reg file
+IMPORT_KEY = 2  # Column of telegram name in reg file
+IMPORT_VAL = 1  # Column of agent name in reg file
 IMPORT_DATA = {'Fraction': 4, 'Years': 5, 'Badges': 6}  # Columns of additional data in reg
 CSV_DELIMITER = ";"
 OUT_ENCODING = "cp1251"
 # MODES = ["Explorer", "XM Collected", "Trekker", "Builder", "Connector", "Mind Controller", "Illuminator",
 # "Recharger", "Liberator", "Pioneer", "Engineer", "Purifier", "Portal Destroy", "Links Destroy", "Fields Destroy",
 # "SpecOps", "Hacker", "Translator"]
+
+try:
+    import local
+    redefined = dir(local)
+    if "EVENT_TIMEZONE" in redefined:
+        EVENT_TIMEZONE = local.EVENT_TIMEZONE
+    if "API_TOKEN" in redefined:
+        API_TOKEN = local.API_TOKEN
+    if "ADMINS" in redefined:
+        ADMINS = local.ADMINS
+    if "TEST_MODE" in redefined:
+        TEST_MODE = local.TEST_MODE
+    if "UNKNOWN_AGENTS" in redefined:
+        UNKNOWN_AGENTS = local.UNKNOWN_AGENTS
+    if "MODES" in redefined:
+        MODES = local.MODES
+    if "IMPORT_KEY" in redefined:
+        IMPORT_KEY = local.IMPORT_KEY
+    if "IMPORT_VAL" in redefined:
+        IMPORT_VAL = local.IMPORT_VAL
+    if "IMPORT_DATA" in redefined:
+        IMPORT_DATA = local.IMPORT_DATA
+    if "CSV_DELIMITER" in redefined:
+        CSV_DELIMITER = local.CSV_DELIMITER
+except ImportError:
+    print("Please define data in local.py")
+
+try:
+    tzfile = open('/etc/timezone', 'r')
+    LOCAL_TIMEZONE = tzfile.read().strip()
+    tzfile.close()
+except FileNotFoundError:
+    LOCAL_TIMEZONE = CHAT_TIMEZONE
 
 bot = telebot.TeleBot(API_TOKEN)
 try:
@@ -60,6 +96,9 @@ if "regData" not in data.keys():
     data["regData"] = {}
 if "teams" not in data.keys():
     data["teams"] = {}
+if "timeScript" not in data.keys():
+    data["timeScript"] = []
+
 datafile.close()
 datafile = open("base.txt", "w")
 json.dump(data, datafile, ensure_ascii=False)
@@ -510,10 +549,40 @@ def parse_image(img: Image, filename):
     return {"filename": filename, "success": False}
 
 
-def worker(bot_l, images_l):
+def worker(bot_l, images_l, i):
     while True:
         time.sleep(0.1)
-        while len(images_l):
+        changed = False
+        if i == 0:
+            newScript = []
+            nowdate = pytz.timezone(LOCAL_TIMEZONE).localize(datetime.datetime.now())
+            for cmd in data["timeScript"]:
+                ctime = datetime.datetime.strptime('%s %s'%(cmd[0], cmd[1]), '%Y-%m-%d %H:%M:%S')
+                ctime = pytz.timezone(EVENT_TIMEZONE).localize(ctime).astimezone(pytz.timezone(LOCAL_TIMEZONE))
+                if (ctime < nowdate):
+                    changed = True
+                    if cmd[2] == "startevent":
+                        data["getStart"] = True
+                        data["getEnd"] = False
+                        save_data()
+                    if cmd[2] == "endevent":
+                        data["getStart"] = False
+                        data["getEnd"] = True
+                        save_data()
+                    if cmd[2] == "stop":
+                        data["getStart"] = False
+                        data["getEnd"] = False
+                        save_data()
+                    if cmd[2] == "sendAll":
+                        text = " ".join(cmd[3:])
+                        for i_l in data["tlgids"].keys():
+                            bot.send_message(i_l, "Агент %s, вам сообщение от организаторов:\n" % (data["tlgids"][i_l]) + text)
+                else:
+                    newScript.append(cmd)
+            if changed:
+                data["timeScript"] = newScript
+                save_data()
+        if len(images_l):
             message = images_l.pop()
             if message.content_type == "document":
                 file_id = message.document.file_id
@@ -673,6 +742,7 @@ def cmd_reset(message):
     data["counters"] = {}
     data["tlgids"] = {}
     data["regData"] = {}
+    data["timeScript"] = []
     data["welcome"] = "Привет"
     save_data()
     bot.reply_to(message, "Всё, я всё забыл :)")
@@ -716,6 +786,40 @@ def cmd_stop(message):
     data["getEnd"] = False
     save_data()
     bot.send_message(message.chat.id, "Не принимаю скрины!")
+
+
+@bot.message_handler(commands=["clearscript"])
+@restricted
+def cmd_clearscript(message):
+    data["timeScript"] = []
+    save_data()
+    bot.send_message(message.chat.id, "Скрипт с тайминг-командами очищен")
+
+
+@bot.message_handler(commands=["showscript"])
+@restricted
+def cmd_showscript(message):
+    reply = "\n".join(map(lambda x: " ".join(x), data["timeScript"]))
+    bot.send_message(message.chat.id, "Скрипт с тайминг-командами:\n%s"%reply)
+
+
+@bot.message_handler(commands=["addscript"])
+@restricted
+def cmd_addscript(message):
+    incoming = message.text[message.text.find(' ')+1:].split(" ", 4)
+    known_commands = ["startevent", "endevent", "stop", "sendAll"]
+    try:
+        time = datetime.datetime.strptime('%s %s'%(incoming[0], incoming[1]), '%Y-%m-%d %H:%M:%S')
+        time = pytz.timezone(EVENT_TIMEZONE).localize(time).astimezone(pytz.timezone(LOCAL_TIMEZONE))
+        if incoming[2] in known_commands:
+            data["timeScript"].append(incoming)
+            save_data()
+            reply = "\n".join(map(lambda x: " ".join(x), data["timeScript"]))
+            bot.send_message(message.chat.id, "Скрипт с тайминг-командами:\n%s"%reply)
+        else:
+            bot.send_message(message.chat.id, "Не узнаю команду. Известные команды:\n%s"%("\n".join(known_commands)))
+    except ValueError:
+        bot.send_message(message.chat.id, "Не могу распознать дату и время, укажите в формате YYYY-MM-DD HH:MM:SS")
 
 
 @bot.message_handler(commands=["team"])
@@ -904,5 +1008,5 @@ def process_others(message):
 if __name__ == "__main__":
     for i in range(THREAD_COUNT):
         images.append([])
-        _thread.start_new_thread(worker, (bot, images[i]))
+        _thread.start_new_thread(worker, (bot, images[i], i))
     bot.polling(none_stop=True)

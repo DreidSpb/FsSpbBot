@@ -12,3 +12,5 @@ pyvenv.cfg
 pip-selfcheck.json
 
 base.txt
+local.py
+__pycache__
