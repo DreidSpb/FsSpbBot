@@ -725,7 +725,7 @@ def cmd_send_all(message):
             text = text[:offset + entity.offset] + "```\n" + text[offset + entity.offset:offset + entity.offset + entity.length] + "```" + text[offset + entity.offset + entity.length:]
             offset += 7
     for i_l in data["tlgids"].keys():
-        bot.send_message(i_l, "Агент %s, вам сообщение от организаторов:\n" % (data["tlgids"][i_l]) + text[text.find(' ') + 1:], parse_mode="Markdown")
+        bot.send_message(i_l, "Агент, вам сообщение от организаторов:\n" + text[text.find(' ') + 1:], parse_mode="Markdown")
     bot.reply_to(message, "Отправил")
 
 
