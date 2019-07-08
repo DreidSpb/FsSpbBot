@@ -599,9 +599,9 @@ def worker(bot_l, images_l, i):
                 parse_result = parse_full(img, str(file_id) + ".png")
             else:
                 parse_result = parse_image(img, str(file_id) + ".png")
-            username = message.chat.username
+            username = message.chat.username or "#" + str(message.chat.id)
             if message.forward_from:
-                username = message.forward_from.username
+                username = message.forward_from.username or "#" + str(message.forward_from.id)
             agentname = username
             if username.lower() in data["reg"].keys():
                 agentname = data["reg"][username.lower()]
@@ -956,9 +956,9 @@ def process_photo(message):
     if not data["getStart"] and not data["getEnd"]:
         bot.send_message(message.chat.id, "Я вообще-то сейчас не принимаю скрины!")
         return
-    username = message.chat.username
+    username = message.chat.username or "#" + str(message.chat.id)
     if message.forward_from:
-        username = message.forward_from.username
+        username = message.forward_from.username or "#" + str(message.forward_from.id)
     if username.lower() in data["reg"].keys():
         agentname = data["reg"][username.lower()]
     else:
