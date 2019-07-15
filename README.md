@@ -1,5 +1,3 @@
-This project is licensed under the terms of GNU GPLv3
-
 Code is bad, need refactoring and commenting.
 But working :)
 
