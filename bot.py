@@ -29,6 +29,7 @@ IMPORT_VAL = 1  # Column of agent name in reg file
 IMPORT_DATA = {'Fraction': 4, 'Years': 5, 'Badges': 6}  # Columns of additional data in reg
 CSV_DELIMITER = ";"
 OUT_ENCODING = "cp1251"
+GRADES = {}
 # MODES = ["Explorer", "XM Collected", "Trekker", "Builder", "Connector", "Mind Controller", "Illuminator",
 # "Recharger", "Liberator", "Pioneer", "Engineer", "Purifier", "Portal Destroy", "Links Destroy", "Fields Destroy",
 # "SpecOps", "Hacker", "Translator"]
@@ -48,6 +49,8 @@ try:
         UNKNOWN_AGENTS = local.UNKNOWN_AGENTS
     if "MODES" in redefined:
         MODES = local.MODES
+    if "GRADES" in redefined:
+        GRADES = local.GRADES
     if "IMPORT_KEY" in redefined:
         IMPORT_KEY = local.IMPORT_KEY
     if "IMPORT_VAL" in redefined:
@@ -105,6 +108,147 @@ json.dump(data, datafile, ensure_ascii=False)
 datafile.close()
 nextThread = 0
 images = []
+
+
+def parse_text(message):
+  data = message.text
+  names = {
+    'Time Span' : 'Timespan',
+    'Agent Name' : 'Agent',
+    'Agent Faction' : 'Faction',
+    'Date (yyyy-mm-dd)' : 'none',
+    'Time (hh:mm:ss)' : 'none',
+    'Lifetime AP' : 'TotalAP',
+    'Current AP' : 'AP',
+    'Unique Portals Visited' : 'Explorer',
+    'Portals Discovered' : 'Seer',
+    'Seer Points' : 'SeerP',
+    'XM Collected' : 'XM Collected',
+    'OPR Agreements' : 'OPR',
+    'Distance Walked' : 'Trekker',
+    'Resonators Deployed' : 'Builder',
+    'Links Created' : 'Connector',
+    'Control Fields Created' : 'Mind Controller',
+    'Mind Units Captured' : 'Illuminator',
+    'Longest Link Ever Created' : 'none',
+    'Largest Control Field' : 'none',
+    'XM Recharged' : 'Recharger',
+    'Unique Portals Captured' : 'Pioneer',
+    'Portals Captured' : 'Liberator',
+    'Mods Deployed' : 'Engineer',
+    'Resonators Destroyed' : 'Purifier',
+    'Portals Neutralized' : 'Portal Destroy',
+    'Enemy Links Destroyed' : 'Links Destroy',
+    'Enemy Fields Destroyed' : 'Fields Destroy',
+    'Max Time Portal Held' : 'Guardian',
+    'Max Time Link Maintained' : 'none',
+    'Max Link Length x Days' : 'none',
+    'Max Time Field Held' : 'none',
+    'Largest Field MUs x Days' : 'none',
+    'Unique Missions Completed' : 'SpecOps',
+    'Hacks' : 'Hacker',
+    'Glyph Hack Points' : 'Translator',
+    'Longest Hacking Streak' : 'Sojourner',
+    'Agents Successfully Recruited' : 'Recruiter',
+    'Mission Day(s) Attended' : 'MD',
+    'NL-1331 Meetup(s) Attended' : 'NL',
+    'First Saturday Events' : 'FS',
+    'Recursions' : 'Recursions'
+  }
+  badges = {
+    'NL':(1,5,10,25,50),
+    'Guardian':(3,10,20,90,150),
+    'Recruiter':(2,10,25,50,100),
+    'Explorer':(100,1000,2000,10000,30000),
+    'Connector':(50,1000,5000,25000,100000),
+    'Pioneer':(20,200,1000,5000,20000),
+    'Hacker':(2000,10000,30000,100000,200000),
+    'Trekker':(10,100,300,1000,2500),
+    'Recharger':(100000,1000000,3000000,10000000,25000000),
+    'Translator':(200,2000,6000,20000,50000),
+    'Illuminator':(5000,50000,250000,1000000,4000000),
+    'Engineer':(150,1500,5000,20000,50000),
+    'Builder':(2000,10000,30000,100000,200000),
+    'Purifier':(2000,10000,30000,100000,300000),
+    'SpecOps':(5,25,100,200,500),
+    'Liberator':(100,1000,5000,15000,40000),
+    'Sojourner':(15,30,60,180,360),
+    'Mind Controller':(100,500,2000,10000,40000),
+    'FS':(1,6,12,24,36),
+    'MD':(1,3,6,10,20)
+  }
+  lvls = {
+    1: (0,        0,0,0,0,0),
+    2: (2500,     0,0,0,0,0),
+    3: (20000,    0,0,0,0,0),
+    4: (70000,    0,0,0,0,0),
+    5: (150000,   0,0,0,0,0),
+    6: (300000,   0,0,0,0,0),
+    7: (600000,   0,0,0,0,0),
+    8: (1200000,  0,0,0,0,0),
+    9: (2400000,  0,4,1,0,0),
+    10:(4000000,  0,5,2,0,0),
+    11:(6000000,  0,6,4,0,0),
+    12:(8400000,  0,7,6,0,0),
+    13:(12000000, 0,0,7,1,0),
+    14:(17000000, 0,0,0,2,0),
+    15:(24000000, 0,0,0,3,0),
+    16:(40000000, 0,0,0,4,2),
+  }
+
+  (head, data) = data.split('\n', 2)
+  data = data.strip().split(' ');
+  try:
+    fact_index = data.index('Enlightened');
+    faction = 'Enlightened';
+  except ValueError:
+    try:
+      fact_index = data.index('Resistance');
+      faction = 'Resistance';
+    except ValueError:
+      return {"success": False}
+
+  timespan = " ".join(data[0:fact_index-1])
+  data = data[fact_index-1:]
+  data.insert(0, timespan)
+
+  for i in names.keys():
+    head = head.replace(i, "_".join(i.split(' ')))
+
+  results = {}
+  head = head.strip().split(' ')
+  if len(head) == len(data):
+    for i in range(len(head)):
+      results[names[" ".join(head[i].split('_'))]] = data[i]
+
+  if 'AP' not in results.keys():
+    return {"success": False}
+
+  badgeData = [int(results['AP']), 0, 0, 0, 0, 0]
+  try:
+    for i in badges.keys():
+      if i in results.keys():
+        val = int(results[i])
+        for k in range(len(badges[i])):
+          if (val > badges[i][k]):
+            badgeData[k+1] += 1
+  except:
+    return {"success": False}
+
+  results['Level'] = 0;
+  for l in range(1, 17):
+    passed = True
+    for k in range(6):
+      if badgeData[k] < lvls[l][k]:
+        passed = False
+    if passed:
+      results['Level'] = l
+
+  results['badgeData'] = badgeData
+  results['success'] = True
+  results["Full"] = True
+  results["mode"] = 'Full'
+  return(results)
 
 
 def save_data():
@@ -564,6 +708,7 @@ def worker(bot_l, images_l, i):
                     if cmd[2] == "startevent":
                         data["getStart"] = True
                         data["getEnd"] = False
+                        data["counters"] = {}
                         save_data()
                     if cmd[2] == "endevent":
                         data["getStart"] = False
@@ -766,6 +911,7 @@ def cmd_reg(message):
 def cmd_startevent(message):
     data["getStart"] = True
     data["getEnd"] = False
+    data["counters"] = {}
     save_data()
     bot.send_message(message.chat.id, "Принимаю скрины!")
 
@@ -945,7 +1091,50 @@ def cmd_result(message):
 @bot.message_handler(func=lambda message: True, content_types=["text"])
 def process_msg(message):
     zero_reg(message.chat.id)
-    bot.reply_to(message, "А что ты мне такое пишешь-то? Со мной бесполезно разговаривать, я бот, ничего не знаю")
+    if not data["getStart"] and not data["getEnd"]:
+        bot.send_message(message.chat.id, "Я вообще-то сейчас не принимаю скрины!")
+        return
+    result = parse_text(message)
+    if result['success'] == False:
+      bot.reply_to(message, "Что-то непонятное ты мне тут написал")
+      return
+    username = str(message.chat.id)
+    if message.forward_from:
+        username = str(message.forward_from.id)
+    if username in data["tlgids"].keys():
+      agentname = data["tlgids"][username]
+      if agentname != result['Agent']:
+        bot.reply_to(message, "Это не твоя стата!")
+        return
+    else:
+      agentname = result['Agent']
+      data["tlgids"][username] = agentname
+    diff = {}
+    if agentname in data["counters"].keys():
+      if data["counters"][agentname]["start"]['Timespan'] != result['Timespan']:
+        bot.reply_to(message, "Неправильный интервал статы!")
+        return
+      data["counters"][agentname]["end"] = result
+      for k in GRADES:
+        if k in data["counters"][agentname]["start"].keys() and k in result.keys():
+            diff[k] = int(result[k]) - int(data["counters"][agentname]["start"][k])
+        else:
+            diff[k] = 0
+    else:
+      data["counters"][agentname] = {"start": result, "end": {}}
+    save_data()
+    txt = "Агент: {}\nAP: {:,}\nLevel: {}\n".format(agentname, int(result["AP"]), result["Level"])
+    for mode in MODES:
+      txt += "{}: {:,}.\n".format(mode, int(result[mode]))
+    if len(diff) > 0:
+      txt += "\nУспехи:\n"
+      for mode in GRADES:
+        txt += "{}: {:,} из {} (".format(mode, diff[mode], "/".join(map(str, GRADES[mode])))
+        res = []
+        for i in GRADES[mode]:
+          res.append("❌" if diff[mode] < i else "✅")
+        txt += "/".join(res) + ")\n"
+    bot.reply_to(message, txt)
 
 
 @bot.message_handler(func=lambda message: True, content_types=["photo"])
