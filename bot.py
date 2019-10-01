@@ -17,7 +17,7 @@ import datetime
 import pytz
 
 # telebot.apihelper.proxy = {'https': 'socks5h://login:password@host:port'}
-EVENT_TIMEZONE = 'Europe/Moscow' # Put event timezone here
+EVENT_TIMEZONE = 'Europe/Moscow'  # Put event timezone here
 API_TOKEN = ""  # Put bot token here
 ADMINS = []  # Put telegram-names of admins here
 TEST_MODE = False  # Allow send same data
@@ -35,6 +35,7 @@ GRADES = {}
 # "SpecOps", "Hacker", "Translator"]
 
 try:
+    # noinspection PyPackageRequirements,PyUnresolvedReferences
     import local
     redefined = dir(local)
     if "EVENT_TIMEZONE" in redefined:
@@ -67,7 +68,7 @@ try:
     LOCAL_TIMEZONE = tzfile.read().strip()
     tzfile.close()
 except FileNotFoundError:
-    LOCAL_TIMEZONE = CHAT_TIMEZONE
+    LOCAL_TIMEZONE = EVENT_TIMEZONE
 
 bot = telebot.TeleBot(API_TOKEN)
 try:
@@ -111,144 +112,145 @@ images = []
 
 
 def parse_text(message):
-  data = message.text
-  names = {
-    'Time Span' : 'Timespan',
-    'Agent Name' : 'Agent',
-    'Agent Faction' : 'Faction',
-    'Date (yyyy-mm-dd)' : 'none',
-    'Time (hh:mm:ss)' : 'none',
-    'Lifetime AP' : 'TotalAP',
-    'Current AP' : 'AP',
-    'Unique Portals Visited' : 'Explorer',
-    'Portals Discovered' : 'Seer',
-    'Seer Points' : 'SeerP',
-    'XM Collected' : 'XM Collected',
-    'OPR Agreements' : 'OPR',
-    'Distance Walked' : 'Trekker',
-    'Resonators Deployed' : 'Builder',
-    'Links Created' : 'Connector',
-    'Control Fields Created' : 'Mind Controller',
-    'Mind Units Captured' : 'Illuminator',
-    'Longest Link Ever Created' : 'none',
-    'Largest Control Field' : 'none',
-    'XM Recharged' : 'Recharger',
-    'Unique Portals Captured' : 'Pioneer',
-    'Portals Captured' : 'Liberator',
-    'Mods Deployed' : 'Engineer',
-    'Resonators Destroyed' : 'Purifier',
-    'Portals Neutralized' : 'Portal Destroy',
-    'Enemy Links Destroyed' : 'Links Destroy',
-    'Enemy Fields Destroyed' : 'Fields Destroy',
-    'Max Time Portal Held' : 'Guardian',
-    'Max Time Link Maintained' : 'none',
-    'Max Link Length x Days' : 'none',
-    'Max Time Field Held' : 'none',
-    'Largest Field MUs x Days' : 'none',
-    'Unique Missions Completed' : 'SpecOps',
-    'Hacks' : 'Hacker',
-    'Glyph Hack Points' : 'Translator',
-    'Longest Hacking Streak' : 'Sojourner',
-    'Agents Successfully Recruited' : 'Recruiter',
-    'Mission Day(s) Attended' : 'MD',
-    'NL-1331 Meetup(s) Attended' : 'NL',
-    'First Saturday Events' : 'FS',
-    'Recursions' : 'Recursions'
-  }
-  badges = {
-    'NL':(1,5,10,25,50),
-    'Guardian':(3,10,20,90,150),
-    'Recruiter':(2,10,25,50,100),
-    'Explorer':(100,1000,2000,10000,30000),
-    'Connector':(50,1000,5000,25000,100000),
-    'Pioneer':(20,200,1000,5000,20000),
-    'Hacker':(2000,10000,30000,100000,200000),
-    'Trekker':(10,100,300,1000,2500),
-    'Recharger':(100000,1000000,3000000,10000000,25000000),
-    'Translator':(200,2000,6000,20000,50000),
-    'Illuminator':(5000,50000,250000,1000000,4000000),
-    'Engineer':(150,1500,5000,20000,50000),
-    'Builder':(2000,10000,30000,100000,200000),
-    'Purifier':(2000,10000,30000,100000,300000),
-    'SpecOps':(5,25,100,200,500),
-    'Liberator':(100,1000,5000,15000,40000),
-    'Sojourner':(15,30,60,180,360),
-    'Mind Controller':(100,500,2000,10000,40000),
-    'FS':(1,6,12,24,36),
-    'MD':(1,3,6,10,20)
-  }
-  lvls = {
-    1: (0,        0,0,0,0,0),
-    2: (2500,     0,0,0,0,0),
-    3: (20000,    0,0,0,0,0),
-    4: (70000,    0,0,0,0,0),
-    5: (150000,   0,0,0,0,0),
-    6: (300000,   0,0,0,0,0),
-    7: (600000,   0,0,0,0,0),
-    8: (1200000,  0,0,0,0,0),
-    9: (2400000,  0,4,1,0,0),
-    10:(4000000,  0,5,2,0,0),
-    11:(6000000,  0,6,4,0,0),
-    12:(8400000,  0,7,6,0,0),
-    13:(12000000, 0,0,7,1,0),
-    14:(17000000, 0,0,0,2,0),
-    15:(24000000, 0,0,0,3,0),
-    16:(40000000, 0,0,0,4,2),
-  }
+    data = message.text
+    names = {
+        'Time Span': 'Timespan',
+        'Agent Name': 'Agent',
+        'Agent Faction': 'Faction',
+        'Date (yyyy-mm-dd)': 'none',
+        'Time (hh:mm:ss)': 'none',
+        'Lifetime AP': 'TotalAP',
+        'Current AP': 'AP',
+        'Unique Portals Visited': 'Explorer',
+        'Portals Discovered': 'Seer',
+        'Seer Points': 'SeerP',
+        'XM Collected': 'XM Collected',
+        'OPR Agreements': 'OPR',
+        'Distance Walked': 'Trekker',
+        'Resonators Deployed': 'Builder',
+        'Links Created': 'Connector',
+        'Control Fields Created': 'Mind Controller',
+        'Mind Units Captured': 'Illuminator',
+        'Longest Link Ever Created': 'none',
+        'Largest Control Field': 'none',
+        'XM Recharged': 'Recharger',
+        'Unique Portals Captured': 'Pioneer',
+        'Portals Captured': 'Liberator',
+        'Mods Deployed': 'Engineer',
+        'Resonators Destroyed': 'Purifier',
+        'Portals Neutralized': 'Portal Destroy',
+        'Enemy Links Destroyed': 'Links Destroy',
+        'Enemy Fields Destroyed': 'Fields Destroy',
+        'Max Time Portal Held': 'Guardian',
+        'Max Time Link Maintained': 'none',
+        'Max Link Length x Days': 'none',
+        'Max Time Field Held': 'none',
+        'Largest Field MUs x Days': 'none',
+        'Unique Missions Completed': 'SpecOps',
+        'Hacks': 'Hacker',
+        'Glyph Hack Points': 'Translator',
+        'Longest Hacking Streak': 'Sojourner',
+        'Agents Successfully Recruited': 'Recruiter',
+        'Mission Day(s) Attended': 'MD',
+        'NL-1331 Meetup(s) Attended': 'NL',
+        'First Saturday Events': 'FS',
+        'Recursions': 'Recursions'
+    }
+    badges = {
+        'NL': (1, 5, 10, 25, 50),
+        'Guardian': (3, 10, 20, 90, 150),
+        'Recruiter': (2, 10, 25, 50, 100),
+        'Explorer': (100, 1000, 2000, 10000, 30000),
+        'Connector': (50, 1000, 5000, 25000, 100000),
+        'Pioneer': (20, 200, 1000, 5000, 20000),
+        'Hacker': (2000, 10000, 30000, 100000, 200000),
+        'Trekker': (10, 100, 300, 1000, 2500),
+        'Recharger': (100000, 1000000, 3000000, 10000000, 25000000),
+        'Translator': (200, 2000, 6000, 20000, 50000),
+        'Illuminator': (5000, 50000, 250000, 1000000, 4000000),
+        'Engineer': (150, 1500, 5000, 20000, 50000),
+        'Builder': (2000, 10000, 30000, 100000, 200000),
+        'Purifier': (2000, 10000, 30000, 100000, 300000),
+        'SpecOps': (5, 25, 100, 200, 500),
+        'Liberator': (100, 1000, 5000, 15000, 40000),
+        'Sojourner': (15, 30, 60, 180, 360),
+        'Mind Controller': (100, 500, 2000, 10000, 40000),
+        'FS': (1, 6, 12, 24, 36),
+        'MD': (1, 3, 6, 10, 20)
+    }
+    lvls = {
+        1:  (0,        0, 0, 0, 0, 0),
+        2:  (2500,     0, 0, 0, 0, 0),
+        3:  (20000,    0, 0, 0, 0, 0),
+        4:  (70000,    0, 0, 0, 0, 0),
+        5:  (150000,   0, 0, 0, 0, 0),
+        6:  (300000,   0, 0, 0, 0, 0),
+        7:  (600000,   0, 0, 0, 0, 0),
+        8:  (1200000,  0, 0, 0, 0, 0),
+        9:  (2400000,  0, 4, 1, 0, 0),
+        10: (4000000,  0, 5, 2, 0, 0),
+        11: (6000000,  0, 6, 4, 0, 0),
+        12: (8400000,  0, 7, 6, 0, 0),
+        13: (12000000, 0, 0, 7, 1, 0),
+        14: (17000000, 0, 0, 0, 2, 0),
+        15: (24000000, 0, 0, 0, 3, 0),
+        16: (40000000, 0, 0, 0, 4, 2),
+    }
 
-  (head, data) = data.split('\n', 2)
-  data = data.strip().split(' ');
-  try:
-    fact_index = data.index('Enlightened');
-    faction = 'Enlightened';
-  except ValueError:
+    (head, data) = data.split('\n', 2)
+    data = data.strip().split(' ')
     try:
-      fact_index = data.index('Resistance');
-      faction = 'Resistance';
+        fact_index = data.index('Enlightened')
+        faction = 'Enlightened'
     except ValueError:
-      return {"success": False}
+        try:
+            fact_index = data.index('Resistance')
+            faction = 'Resistance'
+        except ValueError:
+            return {"success": False}
 
-  timespan = " ".join(data[0:fact_index-1])
-  data = data[fact_index-1:]
-  data.insert(0, timespan)
+    timespan = " ".join(data[0:fact_index-1])
+    data = data[fact_index-1:]
+    data.insert(0, timespan)
 
-  for i in names.keys():
-    head = head.replace(i, "_".join(i.split(' ')))
+    for i in names.keys():
+        head = head.replace(i, "_".join(i.split(' ')))
 
-  results = {}
-  head = head.strip().split(' ')
-  if len(head) == len(data):
-    for i in range(len(head)):
-      results[names[" ".join(head[i].split('_'))]] = data[i]
+    results = {}
+    head = head.strip().split(' ')
+    if len(head) == len(data):
+        for i in range(len(head)):
+            results[names[" ".join(head[i].split('_'))]] = data[i]
 
-  if 'AP' not in results.keys():
-    return {"success": False}
+    if 'AP' not in results.keys():
+        return {"success": False}
 
-  badgeData = [int(results['AP']), 0, 0, 0, 0, 0]
-  try:
-    for i in badges.keys():
-      if i in results.keys():
-        val = int(results[i])
-        for k in range(len(badges[i])):
-          if (val > badges[i][k]):
-            badgeData[k+1] += 1
-  except:
-    return {"success": False}
+    badge_data = [int(results['AP']), 0, 0, 0, 0, 0]
+    try:
+        for i in badges.keys():
+            if i in results.keys():
+                val = int(results[i])
+                for k in range(len(badges[i])):
+                    if val > badges[i][k]:
+                        badge_data[k+1] += 1
+    except ValueError:
+        return {"success": False}
 
-  results['Level'] = 0;
-  for l in range(1, 17):
-    passed = True
-    for k in range(6):
-      if badgeData[k] < lvls[l][k]:
-        passed = False
-    if passed:
-      results['Level'] = l
+    results['Level'] = 0
+    for l in range(1, 17):
+        passed = True
+        for k in range(6):
+            if badge_data[k] < lvls[l][k]:
+                passed = False
+        if passed:
+            results['Level'] = l
 
-  results['badgeData'] = badgeData
-  results['success'] = True
-  results["Full"] = True
-  results["mode"] = 'Full'
-  return(results)
+    results["Faction"] = faction
+    results['badgeData'] = badge_data
+    results['success'] = True
+    results["Full"] = True
+    results["mode"] = 'Full'
+    return results
 
 
 def save_data():
@@ -698,12 +700,12 @@ def worker(bot_l, images_l, i):
         time.sleep(0.1)
         changed = False
         if i == 0:
-            newScript = []
+            new_script = []
             nowdate = pytz.timezone(LOCAL_TIMEZONE).localize(datetime.datetime.now())
             for cmd in data["timeScript"]:
-                ctime = datetime.datetime.strptime('%s %s'%(cmd[0], cmd[1]), '%Y-%m-%d %H:%M:%S')
+                ctime = datetime.datetime.strptime('%s %s' % (cmd[0], cmd[1]), '%Y-%m-%d %H:%M:%S')
                 ctime = pytz.timezone(EVENT_TIMEZONE).localize(ctime).astimezone(pytz.timezone(LOCAL_TIMEZONE))
-                if (ctime < nowdate):
+                if ctime < nowdate:
                     changed = True
                     if cmd[2] == "startevent":
                         data["getStart"] = True
@@ -723,9 +725,9 @@ def worker(bot_l, images_l, i):
                         for i_l in data["tlgids"].keys():
                             bot.send_message(i_l, "Агент %s, вам сообщение от организаторов:\n" % (data["tlgids"][i_l]) + text)
                 else:
-                    newScript.append(cmd)
+                    new_script.append(cmd)
             if changed:
-                data["timeScript"] = newScript
+                data["timeScript"] = new_script
                 save_data()
         if len(images_l):
             message = images_l.pop()
@@ -812,7 +814,7 @@ def cmd_start(message):
 
 @bot.message_handler(commands=["help"])
 def cmd_help(message):
-    bot.reply_to(message, ("loadreg - (for admins) Load list of registered agents\nreg - (for admins) Add one agent (/reg AgentName TelegramName)\nstartevent - (for admins) Begin taking start screenshots\nendevent - (for admins) Begin taking final screenshots\nreset - (for admins) Clear all data and settings\nsetokchat - (for admins) Set this chat as destination for parsed screens\nsetfailchat - (for admins) Set this chat as destination for NOT parsed screens\nresult - (for admins) Get result table file\nstop - (for admins) Stop taking events\nsetwelcome - (for admins) Set welcome message"))
+    bot.reply_to(message, "loadreg - (for admins) Load list of registered agents\nreg - (for admins) Add one agent (/reg AgentName TelegramName)\nstartevent - (for admins) Begin taking start screenshots\nendevent - (for admins) Begin taking final screenshots\nreset - (for admins) Clear all data and settings\nsetokchat - (for admins) Set this chat as destination for parsed screens\nsetfailchat - (for admins) Set this chat as destination for NOT parsed screens\nresult - (for admins) Get result table file\nstop - (for admins) Stop taking events\nsetwelcome - (for admins) Set welcome message")
 
 
 @bot.message_handler(commands=["loadreg"])
@@ -946,7 +948,7 @@ def cmd_clearscript(message):
 @restricted
 def cmd_showscript(message):
     reply = "\n".join(map(lambda x: " ".join(x), data["timeScript"]))
-    bot.send_message(message.chat.id, "Скрипт с тайминг-командами:\n%s"%reply)
+    bot.send_message(message.chat.id, "Скрипт с тайминг-командами:\n%s" % reply)
 
 
 @bot.message_handler(commands=["addscript"])
@@ -955,15 +957,16 @@ def cmd_addscript(message):
     incoming = message.text[message.text.find(' ')+1:].split(" ", 4)
     known_commands = ["startevent", "endevent", "stop", "sendAll"]
     try:
-        time = datetime.datetime.strptime('%s %s'%(incoming[0], incoming[1]), '%Y-%m-%d %H:%M:%S')
+        time = datetime.datetime.strptime('%s %s' % (incoming[0], incoming[1]), '%Y-%m-%d %H:%M:%S')
+        # noinspection PyUnusedLocal
         time = pytz.timezone(EVENT_TIMEZONE).localize(time).astimezone(pytz.timezone(LOCAL_TIMEZONE))
         if incoming[2] in known_commands:
             data["timeScript"].append(incoming)
             save_data()
             reply = "\n".join(map(lambda x: " ".join(x), data["timeScript"]))
-            bot.send_message(message.chat.id, "Скрипт с тайминг-командами:\n%s"%reply)
+            bot.send_message(message.chat.id, "Скрипт с тайминг-командами:\n%s" % reply)
         else:
-            bot.send_message(message.chat.id, "Не узнаю команду. Известные команды:\n%s"%("\n".join(known_commands)))
+            bot.send_message(message.chat.id, "Не узнаю команду. Известные команды:\n%s" % ("\n".join(known_commands)))
     except ValueError:
         bot.send_message(message.chat.id, "Не могу распознать дату и время, укажите в формате YYYY-MM-DD HH:MM:SS")
 
@@ -1092,9 +1095,9 @@ def cmd_result(message):
 def process_msg(message):
     zero_reg(message.chat.id)
     result = parse_text(message)
-    if result['success'] == False:
-      bot.reply_to(message, "Что-то непонятное ты мне тут написал")
-      return
+    if not result['success']:
+        bot.reply_to(message, "Что-то непонятное ты мне тут написал")
+        return
     if not data["getStart"] and not result['Agent'] in data["counters"].keys():
         bot.send_message(message.chat.id, "Я вообще-то сейчас не принимаю начальные скрины!")
         return
@@ -1102,38 +1105,40 @@ def process_msg(message):
     if message.forward_from:
         username = str(message.forward_from.id)
     if username in data["tlgids"].keys():
-      agentname = data["tlgids"][username]
-      if agentname != result['Agent']:
-        bot.reply_to(message, "Это не твоя стата!")
-        return
+        agentname = data["tlgids"][username]
+        if agentname != result['Agent']:
+            bot.reply_to(message, "Это не твоя стата!")
+            return
     else:
-      agentname = result['Agent']
-      data["tlgids"][username] = agentname
+        agentname = result['Agent']
+        data["tlgids"][username] = agentname
     diff = {}
     if agentname in data["counters"].keys():
-      if data["counters"][agentname]["start"]['Timespan'] != result['Timespan']:
-        bot.reply_to(message, "Неправильный интервал статы!")
-        return
-      data["counters"][agentname]["end"] = result
-      for k in GRADES:
-        if k in data["counters"][agentname]["start"].keys() and k in result.keys():
-            diff[k] = int(result[k]) - int(data["counters"][agentname]["start"][k])
-        else:
-            diff[k] = 0
+        tmp = dict(data["counters"][agentname])
+        if tmp["start"]['Timespan'] != result['Timespan']:
+            bot.reply_to(message, "Неправильный интервал статы!")
+            return
+        tmp["end"] = result
+        for k in GRADES:
+            if k in tmp["start"].keys() and k in result.keys():
+                diff[k] = int(result[k]) - int(tmp["start"][k])
+            else:
+                diff[k] = 0
+        data["counters"][agentname] = tmp
     else:
-      data["counters"][agentname] = {"start": result, "end": {}}
+        data["counters"][agentname] = {"start": result, "end": {}}
     save_data()
     txt = "Агент: {}\nAP: {:,}\nLevel: {}\n".format(agentname, int(result["AP"]), result["Level"])
     for mode in MODES:
-      txt += "{}: {:,}.\n".format(mode, int(result[mode]))
+        txt += "{}: {:,}.\n".format(mode, int(result[mode]))
     if len(diff) > 0:
-      txt += "\nУспехи:\n"
-      for mode in GRADES:
-        txt += "{}: {:,} из {} (".format(mode, diff[mode], "/".join(map(str, GRADES[mode])))
-        res = []
-        for i in GRADES[mode]:
-          res.append("❌" if diff[mode] < i else "✅")
-        txt += "/".join(res) + ")\n"
+        txt += "\nУспехи:\n"
+        for mode in GRADES:
+            txt += "{}: {:,} из {} (".format(mode, diff[mode], "/".join(map(str, GRADES[mode])))
+            res = []
+            for i in GRADES[mode]:
+                res.append("❌" if diff[mode] < i else "✅")
+            txt += "/".join(res) + ")\n"
     bot.reply_to(message, txt)
 
 
@@ -1173,7 +1178,6 @@ def process_photo(message):
                         return
     images[nextThread].insert(0, message)
     nextThread = (nextThread + 1) % THREAD_COUNT
-
 
 
 @bot.message_handler(func=lambda message: True, content_types=["document"])
