@@ -1091,13 +1091,13 @@ def cmd_result(message):
 @bot.message_handler(func=lambda message: True, content_types=["text"])
 def process_msg(message):
     zero_reg(message.chat.id)
-    if not data["getStart"] and not data["getEnd"]:
-        bot.send_message(message.chat.id, "Я вообще-то сейчас не принимаю скрины!")
-        return
     result = parse_text(message)
     if result['success'] == False:
       bot.reply_to(message, "Что-то непонятное ты мне тут написал")
       return
+    if not data["getStart"] and not result['Agent'] in data["counters"].keys():
+        bot.send_message(message.chat.id, "Я вообще-то сейчас не принимаю начальные скрины!")
+        return
     username = str(message.chat.id)
     if message.forward_from:
         username = str(message.forward_from.id)
