@@ -14,3 +14,4 @@ pip-selfcheck.json
 base.txt
 local.py
 __pycache__
+/.idea/
