@@ -154,6 +154,9 @@ def parse_text(message):
         'Mission Day(s) Attended': 'MD',
         'NL-1331 Meetup(s) Attended': 'NL',
         'First Saturday Events': 'FS',
+        'Clear Fields Events': 'ClearField',
+        'Prime Challenges': 'Prime',
+        'Stealth Ops Missions' : 'Stealth',
         'Recursions': 'Recursions'
     }
     badges = {
