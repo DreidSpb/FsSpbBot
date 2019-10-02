@@ -387,53 +387,53 @@ def doubled(img: Image):
 
 
 def crop_primeap(img: Image):
-    prime_back = (11, 18, 36)
     pxls = tuple(img.getdata())
-    backs = find_lines(pxls, img.width, (0, int(img.height * 0.42), int(img.width * 0.8), img.height), [prime_back], 50, 5, 0, False)
-    if len(backs):
-        last_back = backs[len(backs) - 1]
-        # BAD CODE!
-        concurrent = 0
-        last_l = 0
-        for x in range(img.height, int(img.width * 0.9)):
-            currpx = int(img.height * 0.42) * img.width + x
-            px_count = 0
-            line_error = 0
-            if last_l == 0:
-                for y in range(0, last_back - int(img.height * 0.42)):
-                    if color_diff(pxls[int(currpx)], prime_back) > 40:
-                        c_diff = color_diff(pxls[int(currpx)], (160, 165, 240))
-                        line_error += c_diff
-                        px_count += 1
-                    currpx += img.width - 0.5
-                if px_count:
-                    line_error /= px_count
-                    if line_error > 200:
-                        concurrent += 1
-                        if concurrent > img.height / 5:
-                            last_l = x - concurrent - int(last_back - img.height * 0.42) * 2 / 3
-                    else:
-                        concurrent = 0
-                else:
-                    concurrent = 0
-        # END BAD CODE
-        if last_l:
-            left = find_lines(pxls, img.width, (0, int(img.height * 0.42), int(last_l / 2), last_back), [prime_back], 100, 2, 1, False, False)
-            if len(left) == 1:
-                ap_img = img.crop((left[0], int(img.height * 0.42), last_l, last_back))
-                ap = pytesseract.image_to_string(ap_img, config='-psm 7 -c tessedit_char_whitelist="0123456789AP.,"').replace(" ", "").replace(".", "").replace(",", "")
-                backs = find_lines(pxls, img.width, (img.width - img.height * 2, 0, img.width - int(img.height / 2), img.height), [prime_back], 20, 10, 0, True, False)
-                top = find_lines(pxls, img.width, (backs[len(backs) - 1] - 5, 0, int(img.width * 0.95), int(img.height / 2)), [prime_back], 40, 1, 0, False)
-                if len(top):
-                    lvl_img = img.crop((backs[len(backs) - 1] - 5, top[len(top) - 1], int(img.width * 0.97), img.height))
-                    pixels = lvl_img.getdata()
-                    lvl_img.putdata([px if px[0] + px[1] + px[2] > 200 else (0, 0, 0) for px in pixels])
-                    level = pytesseract.image_to_string(doubled(lvl_img), config='-psm 7 -c tessedit_char_whitelist="0123456789"').replace(" ", "")
-                    if level == "":
-                        level = 0
-                else:
-                    level = 0
-                return [ap, level]
+    backs = find_lines(pxls, img.width, (0, 0, img.width, img.height), [(0, 0, 0)], 30, 5, 0)
+    if len(backs) == 2:
+        ap_img = img.crop((0, backs[0], img.width, backs[1] + 10))
+        pxls = tuple(ap_img.getdata())
+        dbacks = find_lines(pxls, ap_img.width, (0, 0, ap_img.width, ap_img.height), [(0, 0, 0)], 10, 10, 0, True, False)
+        if len(dbacks):
+            crop_width = int((ap_img.width - dbacks[len(dbacks) - 1]) * 0.4)
+            ap_img = ap_img.crop((crop_width, 0, ap_img.width - crop_width * 2, ap_img.height))
+            pxls = tuple(ap_img.getdata())
+            ap_img.putdata([px if px[0] + px[1] + px[2] > 100 else (0, 0, 0) for px in pxls])
+            ap = pytesseract.image_to_string(doubled(ap_img), config='-psm 7 -c tessedit_char_whitelist="0123456789AP.,/"').replace(".", "").replace(",", "").replace(" ", "")
+            print(ap)
+            level = 1
+            try:
+                slash = ap.index("/")
+                (curr, lvlreq) = (ap[:slash], ap[slash + 1:len(ap)-2])
+                lvldiffs = {
+                    1:  (2500, 2600),
+                    2:  (17500, 17600),
+                    3:  (50000, 60000),
+                    4:  (80000, 30000),
+                    5:  (150000, 160000),
+                    6:  (300000, 800000),
+                    7:  (600000, 500000),
+                    8:  (1200000, 1200000),
+                    9:  (1600000, 1500000),
+                    10: (2000000, 2000000),
+                    11: (2400000, 2100000),
+                    12: (3600000, 3500000),
+                    13: (5000000, 6000000),
+                    14: (7000000, 1000000),
+                    15: (16000000, 11000000),
+                }
+                currap = int(curr)
+                t = 0
+                for i in range(1, 16):
+                    if int(lvlreq) in lvldiffs[i]:
+                        break
+                    t += lvldiffs[i][0]
+                    level += 1
+                if level < 16:
+                    return [str(t + currap) + 'AP', level]
+            except ValueError:
+                if len(ap) in (10, 11, 12):
+                    level = 16
+                    return [ap, level]
     return []
 
 
@@ -445,7 +445,7 @@ def parse_image(img: Image, filename):
     pxls = tuple(img.getdata())
 
     # Find pink lines (1 - above AP, 2 - in medal)
-    pink_lines = find_lines(pxls, img.width, (int(img.width * 0.3), 0, int(img.width * 0.7), int(img.height * 0.7)), [pink], 150, 1, 2)
+    pink_lines = find_lines(pxls, img.width, (int(img.width * 0.3), 0, int(img.width * 0.7), int(img.height * 0.7)), [pink], 170, 1, 2)
     if len(pink_lines) == 2:  # Found
         # Search for empty line after AP
         prime_backs = find_lines(pxls, img.width, (int(img.width * 0.25), pink_lines[0] + 50, int(img.width * 0.98), pink_lines[1]), [prime_back], 50, 1, 1, False)
@@ -453,7 +453,7 @@ def parse_image(img: Image, filename):
             # Main height parameter
             prime_height = prime_backs[0] - pink_lines[0]
             # Extract AP to IMG
-            prime_ap_img = img.crop((int(img.width * 0.1), prime_backs[0] - int(prime_height * 1.5), img.width, prime_backs[0]))
+            prime_ap_img = img.crop((int(img.width * 0.1), prime_backs[0] - int(prime_height * 1.6), img.width, prime_backs[0]))
             if debug_level >= 1:
                 prime_ap_img.save("tables/" + filename + "_ap.png")
 

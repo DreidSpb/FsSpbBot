@@ -2,7 +2,6 @@
 # -*- coding: utf-8 -*-
 
 from PIL import Image
-from functools import wraps
 import pytesseract
 import re
 import sys
@@ -11,7 +10,7 @@ import difflib
 MODES = ["Explorer", "XM Collected", "Trekker", "Builder", "Connector", "Mind Controller", "Illuminator", "Recharger", "Liberator", "Pioneer", "Engineer", "Purifier", "Portal Destroy", "Links Destroy", "Fields Destroy", "SpecOps", "Hacker", "Translator"]
 
 
-def strDiff(str1:str, str2:str):
+def str_diff(str1: str, str2: str):
     d = difflib.ndiff(str1, str2)
     diffs = []
     for dd in d:
@@ -20,12 +19,12 @@ def strDiff(str1:str, str2:str):
     return len(diffs) < len(str2)
 
 
-def returnVal(ap:int, level:int, name:str, value:str):
+def return_val(ap: int, level: int, name: str, value: str):
     kmregexp = re.compile(r"([0-9]+)k(m|rn|n)")
     numregexp = re.compile(r"^([0-9]+)$")
     global MODES
     for mode in MODES:
-        if strDiff(name, mode):
+        if str_diff(name, mode):
             if mode == "Trekker":
                 match = kmregexp.match(value)
                 if match:
@@ -37,106 +36,105 @@ def returnVal(ap:int, level:int, name:str, value:str):
     return False
 
 
-def colorDiff(px:tuple, color:tuple):
+def color_diff(px: tuple, color: tuple):
     return abs(px[0]-color[0]) + abs(px[1]-color[1]) + abs(px[2]-color[2])
 
 
-def find_lines(pixels:tuple, width:int, rect:tuple, colors:list, threshhold:int, minWidth:int=1, findCount:int=0, average:bool=True, horizontal:bool=True):
-    xRange = rect[2]-rect[0] if horizontal else rect[3]-rect[1]
-    yStart = rect[1] if horizontal else rect[0]
-    yEnd = rect[3] if horizontal else rect[2]
-    pxDiff = 1 if horizontal else width
+def find_lines(pixels: tuple, width: int, rect: tuple, colors: list, threshhold: int, min_width: int = 1, find_count: int = 0, average: bool = True, horizontal: bool = True):
+    x_range = rect[2]-rect[0] if horizontal else rect[3]-rect[1]
+    y_start = rect[1] if horizontal else rect[0]
+    y_end = rect[3] if horizontal else rect[2]
+    px_diff = 1 if horizontal else width
     results = []
-    last = 0
     concurrent = 0
-    alreadySaved = False
-    for y in range(yStart, yEnd):
-        lineError = 0
+    already_saved = False
+    for y in range(y_start, y_end):
+        line_error = 0
         if horizontal:
-            currPx = y * width + rect[0]
+            curr_px = y * width + rect[0]
         else:
-            currPx = y + rect[1] * width
+            curr_px = y + rect[1] * width
         process = True
-        for x in range(xRange):
+        for x in range(x_range):
             if process:
-                diffs = tuple(colorDiff(pixels[currPx], color) for color in colors)
-                currPx += pxDiff
-                lineError += min(diffs)
+                diffs = tuple(color_diff(pixels[curr_px], color) for color in colors)
+                curr_px += px_diff
+                line_error += min(diffs)
                 if not average:
                     if min(diffs) > threshhold:
                         process = False
         if process:
-            lineError /= xRange
-            if lineError < threshhold:
+            line_error /= x_range
+            if line_error < threshhold:
                 concurrent += 1
-                if concurrent >= minWidth and not alreadySaved:
+                if concurrent >= min_width and not already_saved:
                     results.append(y)
-                    alreadySaved = True
-                    if findCount and (len(results) >= findCount):
+                    already_saved = True
+                    if find_count and (len(results) >= find_count):
                         return results
             else:
                 concurrent = 0
-                alreadySaved = False
+                already_saved = False
         else:
             concurrent = 0
-            alreadySaved = False
+            already_saved = False
     return results
 
 
-def doubled(img:Image):
+def doubled(img: Image):
     d = Image.new("RGB", (img.width * 2, img.height * 2))
     d.paste(img, (int(img.width / 2), int(img.height / 2)))
     return d
 
 
-def crop_primeap(img:Image):
-    primeBack = (11, 18, 36)
+def crop_primeap(img: Image):
     pxls = tuple(img.getdata())
-    backs = find_lines(pxls, img.width, (0, int(img.height * 0.42), int(img.width * 0.8), img.height), [primeBack], 50, 5, 0, False)
-    if len(backs):
-        lastBack = backs[len(backs)-1]
-        #BAD CODE!
-        concurrent = 0
-        lastL = 0
-        for x in range(img.height, int(img.width * 0.9)):
-            currpx = int(img.height * 0.42) * img.width + x
-            pxCount = 0
-            lineError = 0
-            if lastL == 0:
-                for y in range(0, lastBack - int(img.height * 0.42)):
-                    if colorDiff(pxls[int(currpx)], primeBack) > 40:
-                        cDiff = colorDiff(pxls[int(currpx)], (160, 165, 240))
-                        lineError += cDiff
-                        pxCount += 1
-                    currpx += img.width - 0.5
-                if pxCount:
-                    lineError /= pxCount
-                    if(lineError > 200):
-                        concurrent += 1
-                        if concurrent > img.height / 5:
-                            lastL = x - concurrent - int(lastBack - img.height * 0.42) * 2 / 3
-                    else:
-                        concurrent = 0
-                else:
-                    concurrent = 0
-        #END BAD CODE
-        if lastL:
-            left = find_lines(pxls, img.width, (0, int(img.height * 0.42), int(lastL / 2), lastBack), [primeBack], 100, 2, 1, False, False)
-            if len(left) == 1:
-                apImg = img.crop((left[0], int(img.height * 0.42), lastL, lastBack))
-                ap = pytesseract.image_to_string(apImg, config='-psm 7 -c tessedit_char_whitelist="0123456789AP.,"').replace(" ", "").replace(".", "").replace(",", "")
-                backs = find_lines(pxls, img.width, (img.width - img.height * 2, 0, img.width - int(img.height / 2), img.height), [primeBack], 20, 10, 0, True, False)
-                top = find_lines(pxls, img.width, (backs[len(backs)-1] - 5, 0, int(img.width * 0.95), int(img.height / 2)), [primeBack], 40, 1, 0, False)
-                if len(top):
-                    lvlImg = img.crop((backs[len(backs)-1] - 5, top[len(top)-1], int(img.width * 0.97), img.height))
-                    pixels = lvlImg.getdata()
-                    lvlImg.putdata([px if px[0] + px[1] + px[2] > 200 else (0,0,0) for px in pixels])
-                    level = pytesseract.image_to_string(doubled(lvlImg), config='-psm 7 -c tessedit_char_whitelist="0123456789"').replace(" ", "")
-                    if level == "":
-                        level = 0
-                else:
-                    level = 0
-                return [ap, level]
+    backs = find_lines(pxls, img.width, (0, 0, img.width, img.height), [(0, 0, 0)], 30, 5, 0)
+    if len(backs) == 2:
+        ap_img = img.crop((0, backs[0], img.width, backs[1] + 10))
+        pxls = tuple(ap_img.getdata())
+        dbacks = find_lines(pxls, ap_img.width, (0, 0, ap_img.width, ap_img.height), [(0, 0, 0)], 10, 10, 0, True, False)
+        if len(dbacks):
+            crop_width = int((ap_img.width - dbacks[len(dbacks) - 1]) * 0.4)
+            ap_img = ap_img.crop((crop_width, 0, ap_img.width - crop_width * 2, ap_img.height))
+            pxls = tuple(ap_img.getdata())
+            ap_img.putdata([px if px[0] + px[1] + px[2] > 100 else (0, 0, 0) for px in pxls])
+            ap = pytesseract.image_to_string(doubled(ap_img), config='-psm 7 -c tessedit_char_whitelist="0123456789AP.,/"').replace(".", "").replace(",", "").replace(" ", "")
+            print(ap)
+            level = 1
+            try:
+                slash = ap.index("/")
+                (curr, lvlreq) = (ap[:slash], ap[slash + 1:len(ap)-2])
+                lvldiffs = {
+                    1:  (2500, 2600),
+                    2:  (17500, 17600),
+                    3:  (50000, 60000),
+                    4:  (80000, 30000),
+                    5:  (150000, 160000),
+                    6:  (300000, 800000),
+                    7:  (600000, 500000),
+                    8:  (1200000, 1200000),
+                    9:  (1600000, 1500000),
+                    10: (2000000, 2000000),
+                    11: (2400000, 2100000),
+                    12: (3600000, 3500000),
+                    13: (5000000, 6000000),
+                    14: (7000000, 1000000),
+                    15: (16000000, 11000000),
+                }
+                currap = int(curr)
+                t = 0
+                for i in range(1, 16):
+                    if int(lvlreq) in lvldiffs[i]:
+                        break
+                    t += lvldiffs[i][0]
+                    level += 1
+                if level < 16:
+                    return [str(t + currap) + 'AP', level]
+            except ValueError:
+                if len(ap) in (10, 11, 12):
+                    level = 16
+                    return [ap, level]
     return []
 
 
@@ -145,11 +143,10 @@ def parse_image(img: Image, filename):
     apregexp = re.compile(r"[^0-9]?([0-9]+)A[PF]")
     pink = (188, 50, 124)
     prime_back = (11, 18, 36)
-    img = Image.open(filename)
     pxls = tuple(img.getdata())
 
     # Find pink lines (1 - above AP, 2 - in medal)
-    pink_lines = find_lines(pxls, img.width, (int(img.width * 0.3), 0, int(img.width * 0.7), int(img.height * 0.7)), [pink], 150, 1, 2)
+    pink_lines = find_lines(pxls, img.width, (int(img.width * 0.3), 0, int(img.width * 0.7), int(img.height * 0.7)), [pink], 170, 1, 2)
     if len(pink_lines) == 2:  # Found
         # Search for empty line after AP
         prime_backs = find_lines(pxls, img.width, (int(img.width * 0.25), pink_lines[0] + 50, int(img.width * 0.98), pink_lines[1]), [prime_back], 50, 1, 1, False)
@@ -157,7 +154,7 @@ def parse_image(img: Image, filename):
             # Main height parameter
             prime_height = prime_backs[0] - pink_lines[0]
             # Extract AP to IMG
-            prime_ap_img = img.crop((int(img.width * 0.1), prime_backs[0] - int(prime_height * 1.5), img.width, prime_backs[0]))
+            prime_ap_img = img.crop((int(img.width * 0.1), prime_backs[0] - int(prime_height * 1.6), img.width, prime_backs[0]))
             if debug_level >= 1:
                 prime_ap_img.save("tables/" + filename + "_ap.png")
 
