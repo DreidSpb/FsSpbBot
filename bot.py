@@ -26,10 +26,13 @@ MODES = ["Trekker"]  # List medals for current event
 THREAD_COUNT = 4  # Count of worker threads
 IMPORT_KEY = 2  # Column of telegram name in reg file
 IMPORT_VAL = 1  # Column of agent name in reg file
-IMPORT_DATA = {'Fraction': 4, 'Years': 5, 'Badges': 6}  # Columns of additional data in reg
+IMPORT_DATA = {'Years': 5, 'Badges': 6}  # Columns of additional data in reg
 CSV_DELIMITER = ";"
 OUT_ENCODING = "cp1251"
 GRADES = {}
+GRADE_SIGNS = []
+RESSIGN = "💙"
+ENLSIGN = "💚"
 # MODES = ["Explorer", "XM Collected", "Trekker", "Builder", "Connector", "Mind Controller", "Illuminator",
 # "Recharger", "Liberator", "Pioneer", "Engineer", "Purifier", "Portal Destroy", "Links Destroy", "Fields Destroy",
 # "SpecOps", "Hacker", "Translator"]
@@ -52,6 +55,8 @@ try:
         MODES = local.MODES
     if "GRADES" in redefined:
         GRADES = local.GRADES
+    if "GRADE_SIGNS" in redefined:
+        GRADE_SIGNS = local.GRADE_SIGNS
     if "IMPORT_KEY" in redefined:
         IMPORT_KEY = local.IMPORT_KEY
     if "IMPORT_VAL" in redefined:
@@ -577,11 +582,11 @@ def worker(bot_l, images_l, i):
                     with open(filename, "wb") as new_file:
                         new_file.write(downloaded_file)
                     if parse_result["mode"] == "Full":
-                        txt = "Агент: {}\nAP: {:,}\nLevel: {}\n".format(agentname, parse_result["AP"], parse_result["Level"])
+                        txt = "Агент: {}\nAP: {:,}\nLevel: {}\n".format((RESSIGN if parse_result["Faction"] == "Resistance" else ENLSIGN) + " " + agentname, parse_result["AP"], parse_result["Level"])
                         for mode in MODES:
                             txt += "{}: {:,}.\n".format(mode, parse_result[mode])
                     else:
-                        txt = "Агент: {}\nAP {:,}\nLevel {}\n{} {:,}.\n".format(agentname, parse_result["AP"], parse_result["Level"], parse_result["mode"], parse_result[parse_result["mode"]])
+                        txt = "Агент: {}\nAP {:,}\nLevel {}\n{} {:,}.\n".format((RESSIGN if parse_result["Faction"] == "Resistance" else ENLSIGN) + " " + agentname, parse_result["AP"], parse_result["Level"], parse_result["mode"], parse_result[parse_result["mode"]])
                     bot_l.reply_to(message, "Скрин сохранён\n" + txt + "Если данные распознаны неверно - свяжитесь с организаторами.")
                     data["tlgids"][str(message.chat.id)] = agentname
                     dict(data["counters"][agentname])[datakey].update(parse_result)
@@ -852,7 +857,7 @@ def cmd_teamstats(message):
 @bot.message_handler(commands=["result"])
 @restricted
 def cmd_result(message):
-    arr = ["Agent"]
+    arr = ["Agent", "Faction"]
     for field in IMPORT_DATA.keys():
         arr.append(field)
     for step in ["Start", "End", "Diff"]:
@@ -862,7 +867,7 @@ def cmd_result(message):
             arr.append('"%s_%s"' % (step, mode))
     txt = CSV_DELIMITER.join(arr) + "\n"
     for agentname in data["counters"].keys():
-        agentdata = {"start": {"AP": "-", "Level": "-"}, "end": {"AP": "-", "Level": "-"}}
+        agentdata = {"start": {"AP": "-", "Level": "-", "Faction": "-"}, "end": {"AP": "-", "Level": "-", "Faction": "-"}}
         for mode in MODES:
             agentdata["start"][mode] = "-"
             agentdata["end"][mode] = "-"
@@ -870,7 +875,7 @@ def cmd_result(message):
             agentdata["start"].update(dict(data["counters"][agentname])["start"])
         if "end" in data["counters"][agentname].keys():
             agentdata["end"].update(dict(data["counters"][agentname])["end"])
-        arr = ['"%s"' % agentname]
+        arr = ['"%s"' % agentname, dict(data["counters"][agentname])["start"]["Faction"]]
         for field in IMPORT_DATA.keys():
             if agentname in data["regData"].keys():
                 arr.append(dict(data["regData"][agentname])[field])
@@ -934,7 +939,7 @@ def process_msg(message):
     else:
         data["counters"][agentname] = {"start": result, "end": {}}
     save_data()
-    txt = "Агент: {}\nAP: {:,}\nLevel: {}\n".format(agentname, int(result["AP"]), result["Level"])
+    txt = "Агент: {}\nAP: {:,}\nLevel: {}\n".format((RESSIGN if result["Faction"] == "Resistance" else ENLSIGN) + " " + agentname, int(result["AP"]), result["Level"])
     for mode in MODES:
         txt += "{}: {:,}.\n".format(mode, int(result[mode]))
     if len(diff) > 0:
@@ -942,9 +947,14 @@ def process_msg(message):
         for mode in GRADES:
             txt += "{}: {:,} из {} (".format(mode, diff[mode], "/".join(map(str, GRADES[mode])))
             res = []
-            for i in GRADES[mode]:
-                res.append("❌" if diff[mode] < i else "✅")
+            for i in range(len(GRADES[mode])):
+                res.append("❌" if diff[mode] < GRADES[mode][i] else GRADE_SIGNS[i])
             txt += "/".join(res) + ")\n"
+    else:
+        if len(GRADES) > 0:
+            txt += "\nКритерии зачёта:\n"
+            for mode in GRADES:
+                txt += "{}: {}\n".format(mode, "/".join(map(str, GRADES[mode])))
     bot.reply_to(message, txt)
 
 
