@@ -117,8 +117,8 @@ def parse_text(message):
         'Time Span': 'Timespan',
         'Agent Name': 'Agent',
         'Agent Faction': 'Faction',
-        'Date (yyyy-mm-dd)': 'none',
-        'Time (hh:mm:ss)': 'none',
+        'Date (yyyy-mm-dd)': 'Date',
+        'Time (hh:mm:ss)': 'Time',
         'Lifetime AP': 'TotalAP',
         'Current AP': 'AP',
         'Unique Portals Visited': 'Explorer',
@@ -179,7 +179,10 @@ def parse_text(message):
         'Sojourner': (15, 30, 60, 180, 360),
         'Mind Controller': (100, 500, 2000, 10000, 40000),
         'FS': (1, 6, 12, 24, 36),
-        'MD': (1, 3, 6, 10, 20)
+        'MD': (1, 3, 6, 10, 20),
+        'Prime': (1, 2, 3, 4, 1000),
+        'Stealth': (1, 3, 6, 10, 20),
+        'ClearField': (1, 3, 6, 10, 20)
     }
     lvls = {
         1:  (0,        0, 0, 0, 0, 0),
@@ -422,7 +425,7 @@ def crop_primeap(img: Image):
                     12: (3600000, 3500000),
                     13: (5000000, 6000000),
                     14: (7000000, 1000000),
-                    15: (16000000, 11000000),
+                    15: (16000000, 15000000),
                 }
                 currap = int(curr)
                 t = 0
