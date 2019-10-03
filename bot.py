@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 from PIL import Image
-from functools import wraps
+from functools import wraps, reduce
 import pytesseract
 import telebot
 import json
@@ -156,7 +156,7 @@ def parse_text(message):
         'First Saturday Events': 'FS',
         'Clear Fields Events': 'ClearField',
         'Prime Challenges': 'Prime',
-        'Stealth Ops Missions' : 'Stealth',
+        'Stealth Ops Missions': 'Stealth',
         'Recursions': 'Recursions'
     }
     badges = {
@@ -320,7 +320,7 @@ def str_diff(str1: str, str2: str):
     return len(diffs) < len(str2)
 
 
-def return_val(ap: int, level: int, name: str, value: str):
+def return_val(ap: int, level: int, name: str, value: str, faction: str):
     kmregexp = re.compile(r"([0-9]+)k(m|rn|n)")
     numregexp = re.compile(r"^([0-9]+)$")
     xmregexp = re.compile(r"([0-9]+)XM")
@@ -337,7 +337,7 @@ def return_val(ap: int, level: int, name: str, value: str):
             else:
                 match = numregexp.match(value)
             if match:
-                return {"success": True, "AP": ap, mode: int(match.group(1)), "mode": mode, "Level": level}
+                return {"success": True, "AP": ap, mode: int(match.group(1)), "mode": mode, "Level": level, "Faction": faction}
     return False
 
 
@@ -404,8 +404,10 @@ def crop_primeap(img: Image):
             ap_img = ap_img.crop((crop_width, 0, ap_img.width - crop_width * 2, ap_img.height))
             pxls = tuple(ap_img.getdata())
             ap_img.putdata([px if px[0] + px[1] + px[2] > 100 else (0, 0, 0) for px in pxls])
+            pxls = tuple(ap_img.getdata())
+            colors = reduce(lambda prev, new: (prev[0] + new[0], prev[1] + new[1], prev[2] + new[2]), pxls)
+            faction = "Enlightened" if colors[1] > colors[2] else "Resistance"
             ap = pytesseract.image_to_string(doubled(ap_img), config='-psm 7 -c tessedit_char_whitelist="0123456789AP.,/"').replace(".", "").replace(",", "").replace(" ", "")
-            print(ap)
             level = 1
             try:
                 slash = ap.index("/")
@@ -435,11 +437,11 @@ def crop_primeap(img: Image):
                     t += lvldiffs[i][0]
                     level += 1
                 if level < 16:
-                    return [str(t + currap) + 'AP', level]
+                    return [str(t + currap) + 'AP', level, faction]
             except ValueError:
                 if len(ap) in (10, 11, 12):
                     level = 16
-                    return [ap, level]
+                    return [ap, level, faction]
     return []
 
 
@@ -469,8 +471,9 @@ def parse_image(img: Image, filename):
                 # OCR AP, replace letters
                 ap = ap_data[0]
                 level = int(ap_data[1])
+                faction = ap_data[2]
                 if debug_level >= 2:
-                    print("Filename:", filename, "Prime AP:", ap, ", LVL:", level)
+                    print("Filename:", filename, "Prime AP:", ap, ", LVL:", level, ", Faction:", faction)
                 match = apregexp.match(ap)
                 if match:  # Got AP!
                     ap = int(match.group(1))
@@ -491,7 +494,7 @@ def parse_image(img: Image, filename):
                     if debug_level >= 2:
                         print("Name:", name, "Value:", value)
                     # Check if everything is OK
-                    ret = return_val(ap, level, name, value)
+                    ret = return_val(ap, level, name, value, faction)
                     if ret is not False:
                         if debug_level >= 1:
                             img.save("results/ok/" + filename)
