@@ -244,25 +244,26 @@ def parse_text(message):
     if 'AP' not in results.keys():
         return {"success": False}
 
-    badge_data = [int(results['AP']), 0, 0, 0, 0, 0]
-    try:
-        for i in badges.keys():
-            if i in results.keys():
-                val = int(results[i])
-                for k in range(len(badges[i])):
-                    if val > badges[i][k]:
-                        badge_data[k+1] += 1
-    except ValueError:
-        return {"success": False}
+    if "Level" not in results.keys():
+        badge_data = [int(results['AP']), 0, 0, 0, 0, 0]
+        try:
+            for i in badges.keys():
+                if i in results.keys():
+                    val = int(results[i])
+                    for k in range(len(badges[i])):
+                        if val > badges[i][k]:
+                            badge_data[k+1] += 1
+        except ValueError:
+            return {"success": False}
 
-    results['Level'] = 0
-    for l in range(1, 17):
-        passed = True
-        for k in range(6):
-            if badge_data[k] < lvls[l][k]:
-                passed = False
-        if passed:
-            results['Level'] = l
+        results['Level'] = 0
+        for l in range(1, 17):
+            passed = True
+            for k in range(6):
+                if badge_data[k] < lvls[l][k]:
+                    passed = False
+            if passed:
+                results['Level'] = l
 
     results["Faction"] = faction
     results['badgeData'] = badge_data
