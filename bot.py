@@ -162,6 +162,8 @@ def parse_text(message):
         'Clear Fields Events': 'ClearField',
         'Prime Challenges': 'Prime',
         'Stealth Ops Missions': 'Stealth',
+        'OPR Live Events': 'OPR',
+        'Level': 'Level',
         'Recursions': 'Recursions'
     }
     badges = {
@@ -208,7 +210,11 @@ def parse_text(message):
         16: (40000000, 0, 0, 0, 4, 2),
     }
 
-    (head, data) = data.split('\n', 2)
+    lines = data.split('\n')
+    if len(lines) != 2:
+        bot.reply_to(message, "В сообщении должно быть две строки, не добавляйте других!")
+        return {"success": False}
+    (head, data) = lines
     data = data.strip().split(' ')
     try:
         fact_index = data.index('Enlightened')
@@ -224,11 +230,13 @@ def parse_text(message):
     data = data[fact_index-1:]
     data.insert(0, timespan)
 
+    head = head.replace("Unique Portals Captured", "Unique_Portals_Captured")
     for i in names.keys():
         head = head.replace(i, "_".join(i.split(' ')))
 
     results = {}
     head = head.strip().split(' ')
+
     if len(head) == len(data):
         for i in range(len(head)):
             results[names[" ".join(head[i].split('_'))]] = data[i]
@@ -865,9 +873,13 @@ def cmd_result(message):
         arr.append("%s_LVL" % step)
         for mode in MODES:
             arr.append('"%s_%s"' % (step, mode))
+    arr.append("Start_Date");
+    arr.append("Start_Time");
+    arr.append("End_Date");
+    arr.append("End_Time");
     txt = CSV_DELIMITER.join(arr) + "\n"
     for agentname in data["counters"].keys():
-        agentdata = {"start": {"AP": "-", "Level": "-", "Faction": "-"}, "end": {"AP": "-", "Level": "-", "Faction": "-"}}
+        agentdata = {"start": {"AP": "-", "Level": "-", "Faction": "-", "Date": "-", "Time": "-"}, "end": {"AP": "-", "Level": "-", "Faction": "-", "Date": "-", "Time": "-"}}
         for mode in MODES:
             agentdata["start"][mode] = "-"
             agentdata["end"][mode] = "-"
@@ -893,6 +905,10 @@ def cmd_result(message):
             for mode in MODES:
                 if agentdata["start"][mode] != "-" and agentdata["end"][mode] != "-":
                     arr.append("%s" % (int(agentdata["end"][mode]) - int(agentdata["start"][mode])))
+        arr.append(agentdata["start"]["Date"]);
+        arr.append(agentdata["start"]["Time"]);
+        arr.append(agentdata["end"]["Date"]);
+        arr.append(agentdata["end"]["Time"]);
         txt += CSV_DELIMITER.join(arr) + "\n"
     resultfile = open("result.csv", "wb")
     resultfile.write(txt.encode(OUT_ENCODING))
