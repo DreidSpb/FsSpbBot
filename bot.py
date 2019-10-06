@@ -822,12 +822,12 @@ def cmd_mystats(message):
         agentdata["start"].update(dict(data["counters"][agentname])["start"])
     if "end" in data["counters"][agentname].keys():
         agentdata["end"].update(dict(data["counters"][agentname])["end"])
-    txt = "Start AP: {:,}\nStart Level: {}\n".format(agentdata["start"]["AP"], agentdata["start"]["Level"])
+    txt = "Start AP: {:,}\nStart Level: {}\n".format(int(agentdata["start"]["AP"]), agentdata["start"]["Level"])
     for mode in MODES:
-        txt += "Start {}: {:,}\n".format(mode, agentdata["start"][mode])
-    txt += "End AP: {:,}\nEnd Level: {}\n".format(agentdata["end"]["AP"], agentdata["end"]["Level"])
+        txt += "Start {}: {:,}\n".format(mode, int(agentdata["start"][mode]))
+    txt += "End AP: {:,}\nEnd Level: {}\n".format(int(agentdata["end"]["AP"]), agentdata["end"]["Level"])
     for mode in MODES:
-        txt += "End {}: {:,}\n".format(mode, agentdata["end"][mode])
+        txt += "End {}: {:,}\n".format(mode, int(agentdata["end"][mode]))
     bot.reply_to(message, txt)
 
 
@@ -854,13 +854,37 @@ def cmd_teamstats(message):
                 agentdata["end"].update(dict(data["counters"][agentname])["end"])
             txt += "Agent: {}\nStart AP: {:,}\nStart Level: {}\n".format(agentname, agentdata["start"]["AP"], agentdata["start"]["Level"])
             for mode in MODES:
-                txt += "Start {}: {:,}\n".format(mode, agentdata["start"][mode])
-            txt += "End AP: {:,}\nEnd Level: {}\n".format(agentdata["end"]["AP"], agentdata["end"]["Level"])
+                txt += "Start {}: {:,}\n".format(mode, int(agentdata["start"][mode]))
+            txt += "End AP: {:,}\nEnd Level: {}\n".format(int(agentdata["end"]["AP"]), agentdata["end"]["Level"])
             for mode in MODES:
-                txt += "End {}: {:,}\n\n".format(mode, agentdata["end"][mode])
+                txt += "End {}: {:,}\n\n".format(mode, int(agentdata["end"][mode]))
     if len(team) == 0:
         txt = "Тебя нет в командах"
     bot.reply_to(message, txt)
+
+
+def minmaxap(start, end):
+    minap = 0
+    maxap = 0
+    guess = 0
+    apgains = {
+        "Builder": (65, 150, 375),
+        "Hacker": (0, 50, 400),
+        "Mind Controller": (1250, 1250, 1250),
+        "Liberator": (500, 500, 500),
+        "Purifier": (75, 75, 75),
+        "Links Destroy": (187, 187, 187),
+        "Fields Destroy": (750, 750, 750),
+        "Engineer": (125, 125, 125),
+        "Translator": (0, 50, 0)
+    }
+    for i in apgains.keys():
+        if i in start.keys() and i in end.keys():
+            diff = int(end[i]) - int(start[i])
+            minap += diff * apgains[i][0]
+            guess += diff * apgains[i][1]
+            maxap += diff * apgains[i][2]
+    return (minap, guess, maxap)
 
 
 @bot.message_handler(commands=["result"])
@@ -869,15 +893,22 @@ def cmd_result(message):
     arr = ["Agent", "Faction"]
     for field in IMPORT_DATA.keys():
         arr.append(field)
-    for step in ["Start", "End", "Diff"]:
-        arr.append("%s_AP" % step)
-        arr.append("%s_LVL" % step)
-        for mode in MODES:
-            arr.append('"%s_%s"' % (step, mode))
     arr.append("Start_Date");
     arr.append("Start_Time");
     arr.append("End_Date");
     arr.append("End_Time");
+    for step in ["Start", "End"]:
+        arr.append("%s_AP" % step)
+        arr.append("%s_LVL" % step)
+        for mode in MODES:
+            arr.append('"%s_%s"' % (step, mode))
+    arr.append("Min calculated AP");
+    arr.append("Probable calculated AP");
+    arr.append("Max calculated AP");
+    arr.append("Diff_AP")
+    arr.append("Diff_LVL")
+    for mode in MODES:
+        arr.append('"Diff_%s"' % mode)
     txt = CSV_DELIMITER.join(arr) + "\n"
     for agentname in data["counters"].keys():
         agentdata = {"start": {"AP": "-", "Level": "-", "Faction": "-", "Date": "-", "Time": "-"}, "end": {"AP": "-", "Level": "-", "Faction": "-", "Date": "-", "Time": "-"}}
@@ -894,22 +925,26 @@ def cmd_result(message):
                 arr.append(dict(data["regData"][agentname])[field])
             else:
                 arr.append("")
+        arr.append(agentdata["start"]["Date"]);
+        arr.append(agentdata["start"]["Time"]);
+        arr.append(agentdata["end"]["Date"]);
+        arr.append(agentdata["end"]["Time"]);
         for step in ["start", "end"]:
             arr.append('%s' % agentdata[step]["AP"])
             arr.append('%s' % agentdata[step]["Level"])
             for mode in MODES:
                 arr.append("%s" % agentdata[step][mode])
         if agentdata["start"]["AP"] != "-" and agentdata["end"]["AP"] != "-":
+            (minap, guessap, maxap) = minmaxap(agentdata["start"], agentdata["end"])
+            arr.append(str(minap))
+            arr.append(str(guessap))
+            arr.append(str(maxap))
             arr.append("%s" % (int(agentdata["end"]["AP"]) - int(agentdata["start"]["AP"])))
-        if agentdata["start"]["Level"] != "-" and agentdata["end"]["Level"] != "-":
-            arr.append("%s" % (int(agentdata["end"]["Level"]) - int(agentdata["start"]["Level"])))
+            if agentdata["start"]["Level"] != "-" and agentdata["end"]["Level"] != "-":
+                arr.append("%s" % (int(agentdata["end"]["Level"]) - int(agentdata["start"]["Level"])))
             for mode in MODES:
                 if agentdata["start"][mode] != "-" and agentdata["end"][mode] != "-":
                     arr.append("%s" % (int(agentdata["end"][mode]) - int(agentdata["start"][mode])))
-        arr.append(agentdata["start"]["Date"]);
-        arr.append(agentdata["start"]["Time"]);
-        arr.append(agentdata["end"]["Date"]);
-        arr.append(agentdata["end"]["Time"]);
         txt += CSV_DELIMITER.join(arr) + "\n"
     resultfile = open("result.csv", "wb")
     resultfile.write(txt.encode(OUT_ENCODING))
@@ -961,6 +996,7 @@ def process_msg(message):
         txt += "{}: {:,}.\n".format(mode, int(result[mode]))
     if len(diff) > 0:
         txt += "\nУспехи:\n"
+        txt += "AP: {:,}\n".format(int(tmp["end"]["AP"]) - int(tmp["start"]["AP"]))
         for mode in GRADES:
             txt += "{}: {:,} из {} (".format(mode, diff[mode], "/".join(map(str, GRADES[mode])))
             res = []
