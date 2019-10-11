@@ -15,6 +15,7 @@ import os
 import _thread
 import datetime
 import pytz
+import multiprocessing
 
 # telebot.apihelper.proxy = {'https': 'socks5h://login:password@host:port'}
 EVENT_TIMEZONE = 'Europe/Moscow'  # Put event timezone here
@@ -23,7 +24,7 @@ ADMINS = []  # Put telegram-names of admins here
 TEST_MODE = False  # Allow send same data
 UNKNOWN_AGENTS = True  # Get data from unregistered agents
 MODES = ["Trekker"]  # List medals for current event
-THREAD_COUNT = 4  # Count of worker threads
+THREAD_COUNT = multiprocessing.cpu_count()  # Count of worker threads
 IMPORT_KEY = 2  # Column of telegram name in reg file
 IMPORT_VAL = 1  # Column of agent name in reg file
 IMPORT_DATA = {'Years': 5, 'Badges': 6}  # Columns of additional data in reg
