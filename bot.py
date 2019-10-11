@@ -41,7 +41,10 @@ ENLSIGN = "💚"
 try:
     # noinspection PyPackageRequirements,PyUnresolvedReferences
     import local
+
     redefined = dir(local)
+    if "THREAD_COUNT" in redefined:
+        THREAD_COUNT = local.THREAD_COUNT
     if "EVENT_TIMEZONE" in redefined:
         EVENT_TIMEZONE = local.EVENT_TIMEZONE
     if "API_TOKEN" in redefined:
@@ -193,18 +196,18 @@ def parse_text(message):
         'ClearField': (1, 3, 6, 10, 20)
     }
     lvls = {
-        1:  (0,        0, 0, 0, 0, 0),
-        2:  (2500,     0, 0, 0, 0, 0),
-        3:  (20000,    0, 0, 0, 0, 0),
-        4:  (70000,    0, 0, 0, 0, 0),
-        5:  (150000,   0, 0, 0, 0, 0),
-        6:  (300000,   0, 0, 0, 0, 0),
-        7:  (600000,   0, 0, 0, 0, 0),
-        8:  (1200000,  0, 0, 0, 0, 0),
-        9:  (2400000,  0, 4, 1, 0, 0),
-        10: (4000000,  0, 5, 2, 0, 0),
-        11: (6000000,  0, 6, 4, 0, 0),
-        12: (8400000,  0, 7, 6, 0, 0),
+        1: (0, 0, 0, 0, 0, 0),
+        2: (2500, 0, 0, 0, 0, 0),
+        3: (20000, 0, 0, 0, 0, 0),
+        4: (70000, 0, 0, 0, 0, 0),
+        5: (150000, 0, 0, 0, 0, 0),
+        6: (300000, 0, 0, 0, 0, 0),
+        7: (600000, 0, 0, 0, 0, 0),
+        8: (1200000, 0, 0, 0, 0, 0),
+        9: (2400000, 0, 4, 1, 0, 0),
+        10: (4000000, 0, 5, 2, 0, 0),
+        11: (6000000, 0, 6, 4, 0, 0),
+        12: (8400000, 0, 7, 6, 0, 0),
         13: (12000000, 0, 0, 7, 1, 0),
         14: (17000000, 0, 0, 0, 2, 0),
         15: (24000000, 0, 0, 0, 3, 0),
@@ -227,8 +230,8 @@ def parse_text(message):
         except ValueError:
             return {"success": False}
 
-    timespan = " ".join(data[0:fact_index-1])
-    data = data[fact_index-1:]
+    timespan = " ".join(data[0:fact_index - 1])
+    data = data[fact_index - 1:]
     data.insert(0, timespan)
 
     head = head.replace("Unique Portals Captured", "Unique_Portals_Captured")
@@ -245,8 +248,8 @@ def parse_text(message):
     if 'AP' not in results.keys():
         return {"success": False}
 
+    badge_data = [int(results['AP']), 0, 0, 0, 0, 0]
     if "Level" not in results.keys():
-        badge_data = [int(results['AP']), 0, 0, 0, 0, 0]
         try:
             for i in badges.keys():
                 if i in results.keys():
@@ -352,7 +355,8 @@ def return_val(ap: int, level: int, name: str, value: str, faction: str):
             else:
                 match = numregexp.match(value)
             if match:
-                return {"success": True, "AP": ap, mode: int(match.group(1)), "mode": mode, "Level": level, "Faction": faction}
+                return {"success": True, "AP": ap, mode: int(match.group(1)), "mode": mode, "Level": level,
+                        "Faction": faction}
     return False
 
 
@@ -360,7 +364,8 @@ def color_diff(px: tuple, color: tuple):
     return abs(px[0] - color[0]) + abs(px[1] - color[1]) + abs(px[2] - color[2])
 
 
-def find_lines(pixels: tuple, width: int, rect: tuple, colors: list, threshhold: int, min_width: int = 1, find_count: int = 0, average: bool = True, horizontal: bool = True):
+def find_lines(pixels: tuple, width: int, rect: tuple, colors: list, threshhold: int, min_width: int = 1,
+               find_count: int = 0, average: bool = True, horizontal: bool = True):
     x_range = rect[2] - rect[0] if horizontal else rect[3] - rect[1]
     y_start = rect[1] if horizontal else rect[0]
     y_end = rect[3] if horizontal else rect[2]
@@ -413,7 +418,8 @@ def crop_primeap(img: Image):
     if len(backs) == 2:
         ap_img = img.crop((0, backs[0], img.width, backs[1] + 10))
         pxls = tuple(ap_img.getdata())
-        dbacks = find_lines(pxls, ap_img.width, (0, 0, ap_img.width, ap_img.height), [(0, 0, 0)], 10, 10, 0, True, False)
+        dbacks = find_lines(pxls, ap_img.width, (0, 0, ap_img.width, ap_img.height), [(0, 0, 0)], 10, 10, 0, True,
+                            False)
         if len(dbacks):
             crop_width = int((ap_img.width - dbacks[len(dbacks) - 1]) * 0.4)
             ap_img = ap_img.crop((crop_width, 0, ap_img.width - crop_width * 2, ap_img.height))
@@ -422,21 +428,24 @@ def crop_primeap(img: Image):
             pxls = tuple(ap_img.getdata())
             colors = reduce(lambda prev, new: (prev[0] + new[0], prev[1] + new[1], prev[2] + new[2]), pxls)
             faction = "Enlightened" if colors[1] > colors[2] else "Resistance"
-            ap = pytesseract.image_to_string(doubled(ap_img), config='-psm 7 -c tessedit_char_whitelist="0123456789AP.,/"').replace(".", "").replace(",", "").replace(" ", "")
+            ap = pytesseract.image_to_string(doubled(ap_img),
+                                             config='-psm 7 -c tessedit_char_whitelist="0123456789AP.,/"').replace(".",
+                                                                                                                   "").replace(
+                ",", "").replace(" ", "")
             level = 1
             try:
                 slash = ap.index("/")
-                (curr, lvlreq) = (ap[:slash], ap[slash + 1:len(ap)-2])
+                (curr, lvlreq) = (ap[:slash], ap[slash + 1:len(ap) - 2])
                 lvldiffs = {
-                    1:  (2500, 2600),
-                    2:  (17500, 17600),
-                    3:  (50000, 60000),
-                    4:  (80000, 30000),
-                    5:  (150000, 160000),
-                    6:  (300000, 800000),
-                    7:  (600000, 500000),
-                    8:  (1200000, 1200000),
-                    9:  (1600000, 1500000),
+                    1: (2500, 2600),
+                    2: (17500, 17600),
+                    3: (50000, 60000),
+                    4: (80000, 30000),
+                    5: (150000, 160000),
+                    6: (300000, 800000),
+                    7: (600000, 500000),
+                    8: (1200000, 1200000),
+                    9: (1600000, 1500000),
                     10: (2000000, 2000000),
                     11: (2400000, 2100000),
                     12: (3600000, 3500000),
@@ -468,15 +477,19 @@ def parse_image(img: Image, filename):
     pxls = tuple(img.getdata())
 
     # Find pink lines (1 - above AP, 2 - in medal)
-    pink_lines = find_lines(pxls, img.width, (int(img.width * 0.3), 0, int(img.width * 0.7), int(img.height * 0.7)), [pink], 170, 1, 2)
+    pink_lines = find_lines(pxls, img.width, (int(img.width * 0.3), 0, int(img.width * 0.7), int(img.height * 0.7)),
+                            [pink], 170, 1, 2)
     if len(pink_lines) == 2:  # Found
         # Search for empty line after AP
-        prime_backs = find_lines(pxls, img.width, (int(img.width * 0.25), pink_lines[0] + 50, int(img.width * 0.98), pink_lines[1]), [prime_back], 50, 1, 1, False)
+        prime_backs = find_lines(pxls, img.width,
+                                 (int(img.width * 0.25), pink_lines[0] + 50, int(img.width * 0.98), pink_lines[1]),
+                                 [prime_back], 50, 1, 1, False)
         if len(prime_backs) == 1:
             # Main height parameter
             prime_height = prime_backs[0] - pink_lines[0]
             # Extract AP to IMG
-            prime_ap_img = img.crop((int(img.width * 0.1), prime_backs[0] - int(prime_height * 1.6), img.width, prime_backs[0]))
+            prime_ap_img = img.crop(
+                (int(img.width * 0.1), prime_backs[0] - int(prime_height * 1.6), img.width, prime_backs[0]))
             if debug_level >= 1:
                 prime_ap_img.save("tables/" + filename + "_ap.png")
 
@@ -493,19 +506,25 @@ def parse_image(img: Image, filename):
                 if match:  # Got AP!
                     ap = int(match.group(1))
                     # Get medal part
-                    prime_tr_img = img.crop((int(img.width / 4), pink_lines[1] - int(prime_height / 2), int(img.width * 3 / 4), pink_lines[1] + int(prime_height * 2 / 3)))
+                    prime_tr_img = img.crop((int(img.width / 4), pink_lines[1] - int(prime_height / 2),
+                                             int(img.width * 3 / 4), pink_lines[1] + int(prime_height * 2 / 3)))
                     if debug_level >= 1:
                         prime_tr_img.save("tables/" + filename + "_val.png")
                     # OCR, get name and value, replace letters in val
-                    prime_tr_name = prime_tr_img.crop((0, int(prime_tr_img.height / 2), prime_tr_img.width, prime_tr_img.height))
+                    prime_tr_name = prime_tr_img.crop(
+                        (0, int(prime_tr_img.height / 2), prime_tr_img.width, prime_tr_img.height))
                     name = pytesseract.image_to_string(prime_tr_name)
                     prime_tr_val = prime_tr_img.crop((0, 0, prime_tr_img.width, int(prime_tr_img.height * 0.42)))
                     pixels = prime_tr_val.getdata()
                     prime_tr_val.putdata([px if px[0] + px[2] > 220 else (0, 0, 0) for px in pixels])
                     if str_diff(name, "Trekker"):
-                        value = pytesseract.image_to_string(prime_tr_val, config='-psm 7 -c tessedit_char_whitelist="0123456789km.,"').replace(" ", "").replace(".", "").replace(",", "")
+                        value = pytesseract.image_to_string(prime_tr_val,
+                                                            config='-psm 7 -c tessedit_char_whitelist="0123456789km.,"').replace(
+                            " ", "").replace(".", "").replace(",", "")
                     else:
-                        value = pytesseract.image_to_string(prime_tr_val, config='-psm 7 -c tessedit_char_whitelist="0123456789.,"').replace(" ", "").replace(".", "").replace(",", "")
+                        value = pytesseract.image_to_string(prime_tr_val,
+                                                            config='-psm 7 -c tessedit_char_whitelist="0123456789.,"').replace(
+                            " ", "").replace(".", "").replace(",", "")
                     if debug_level >= 2:
                         print("Name:", name, "Value:", value)
                     # Check if everything is OK
@@ -585,19 +604,26 @@ def worker(bot_l, images_l, i):
                 if parse_result["mode"] in dict(data["counters"][agentname])[datakey].keys():
                     if message.chat.username not in ADMINS:
                         if not TEST_MODE:
-                            bot_l.send_message(message.chat.id, "У меня уже есть эти данные по этому агенту, не мухлюй!")
+                            bot_l.send_message(message.chat.id,
+                                               "У меня уже есть эти данные по этому агенту, не мухлюй!")
                             send_reply = False
                 if send_reply:
                     filename += "_" + parse_result["mode"] + ext
                     with open(filename, "wb") as new_file:
                         new_file.write(downloaded_file)
                     if parse_result["mode"] == "Full":
-                        txt = "Агент: {}\nAP: {:,}\nLevel: {}\n".format((RESSIGN if parse_result["Faction"] == "Resistance" else ENLSIGN) + " " + agentname, parse_result["AP"], parse_result["Level"])
+                        txt = "Агент: {}\nAP: {:,}\nLevel: {}\n".format(
+                            (RESSIGN if parse_result["Faction"] == "Resistance" else ENLSIGN) + " " + agentname,
+                            parse_result["AP"], parse_result["Level"])
                         for mode in MODES:
                             txt += "{}: {:,}.\n".format(mode, parse_result[mode])
                     else:
-                        txt = "Агент: {}\nAP {:,}\nLevel {}\n{} {:,}.\n".format((RESSIGN if parse_result["Faction"] == "Resistance" else ENLSIGN) + " " + agentname, parse_result["AP"], parse_result["Level"], parse_result["mode"], parse_result[parse_result["mode"]])
-                    bot_l.reply_to(message, "Скрин сохранён\n" + txt + "Если данные распознаны неверно - свяжитесь с организаторами.")
+                        txt = "Агент: {}\nAP {:,}\nLevel {}\n{} {:,}.\n".format(
+                            (RESSIGN if parse_result["Faction"] == "Resistance" else ENLSIGN) + " " + agentname,
+                            parse_result["AP"], parse_result["Level"], parse_result["mode"],
+                            parse_result[parse_result["mode"]])
+                    bot_l.reply_to(message,
+                                   "Скрин сохранён\n" + txt + "Если данные распознаны неверно - свяжитесь с организаторами.")
                     data["tlgids"][str(message.chat.id)] = agentname
                     dict(data["counters"][agentname])[datakey].update(parse_result)
                     save_data()
@@ -635,7 +661,8 @@ def cmd_start(message):
 
 @bot.message_handler(commands=["help"])
 def cmd_help(message):
-    bot.reply_to(message, "loadreg - (for admins) Load list of registered agents\nreg - (for admins) Add one agent (/reg AgentName TelegramName)\nstartevent - (for admins) Begin taking start screenshots\nendevent - (for admins) Begin taking final screenshots\nreset - (for admins) Clear all data and settings\nsetokchat - (for admins) Set this chat as destination for parsed screens\nsetfailchat - (for admins) Set this chat as destination for NOT parsed screens\nresult - (for admins) Get result table file\nstop - (for admins) Stop taking events\nsetwelcome - (for admins) Set welcome message")
+    bot.reply_to(message,
+                 "loadreg - (for admins) Load list of registered agents\nreg - (for admins) Add one agent (/reg AgentName TelegramName)\nstartevent - (for admins) Begin taking start screenshots\nendevent - (for admins) Begin taking final screenshots\nreset - (for admins) Clear all data and settings\nsetokchat - (for admins) Set this chat as destination for parsed screens\nsetfailchat - (for admins) Set this chat as destination for NOT parsed screens\nresult - (for admins) Get result table file\nstop - (for admins) Stop taking events\nsetwelcome - (for admins) Set welcome message")
 
 
 @bot.message_handler(commands=["loadreg"])
@@ -681,19 +708,28 @@ def cmd_send_all(message):
     offset = 0
     for entity in message.entities:
         if entity.type == 'bold':
-            text = text[:offset + entity.offset] + "*" + text[offset + entity.offset:offset + entity.offset + entity.length] + "*" + text[offset + entity.offset + entity.length:]
+            text = text[:offset + entity.offset] + "*" + text[
+                                                         offset + entity.offset:offset + entity.offset + entity.length] + "*" + text[
+                                                                                                                                offset + entity.offset + entity.length:]
             offset += 2
         if entity.type == 'code':
-            text = text[:offset + entity.offset] + "`" + text[offset + entity.offset:offset + entity.offset + entity.length] + "`" + text[offset + entity.offset + entity.length:]
+            text = text[:offset + entity.offset] + "`" + text[
+                                                         offset + entity.offset:offset + entity.offset + entity.length] + "`" + text[
+                                                                                                                                offset + entity.offset + entity.length:]
             offset += 2
         if entity.type == 'italic':
-            text = text[:offset + entity.offset] + "_" + text[offset + entity.offset:offset + entity.offset + entity.length] + "_" + text[offset + entity.offset + entity.length:]
+            text = text[:offset + entity.offset] + "_" + text[
+                                                         offset + entity.offset:offset + entity.offset + entity.length] + "_" + text[
+                                                                                                                                offset + entity.offset + entity.length:]
             offset += 2
         if entity.type == 'pre':
-            text = text[:offset + entity.offset] + "```\n" + text[offset + entity.offset:offset + entity.offset + entity.length] + "```" + text[offset + entity.offset + entity.length:]
+            text = text[:offset + entity.offset] + "```\n" + text[
+                                                             offset + entity.offset:offset + entity.offset + entity.length] + "```" + text[
+                                                                                                                                      offset + entity.offset + entity.length:]
             offset += 7
     for i_l in data["tlgids"].keys():
-        bot.send_message(i_l, "Агент, вам сообщение от организаторов:\n" + text[text.find(' ') + 1:], parse_mode="Markdown")
+        bot.send_message(i_l, "Агент, вам сообщение от организаторов:\n" + text[text.find(' ') + 1:],
+                         parse_mode="Markdown")
     bot.reply_to(message, "Отправил")
 
 
@@ -775,7 +811,7 @@ def cmd_showscript(message):
 @bot.message_handler(commands=["addscript"])
 @restricted
 def cmd_addscript(message):
-    incoming = message.text[message.text.find(' ')+1:].split(" ", 4)
+    incoming = message.text[message.text.find(' ') + 1:].split(" ", 4)
     known_commands = ["startevent", "endevent", "stop", "sendAll"]
     try:
         time = datetime.datetime.strptime('%s %s' % (incoming[0], incoming[1]), '%Y-%m-%d %H:%M:%S')
@@ -801,7 +837,7 @@ def cmd_team(message):
         bot.reply_to(message, "Убрал тебя из команды")
         save_data()
         return
-    team_name = message.text[message.text.find(' ')+1:]
+    team_name = message.text[message.text.find(' ') + 1:]
     if team_name not in data["teams"]:
         data["teams"][team_name] = []
     data["teams"][team_name].append(message.chat.id)
@@ -853,7 +889,8 @@ def cmd_teamstats(message):
                 agentdata["start"].update(dict(data["counters"][agentname])["start"])
             if "end" in data["counters"][agentname].keys():
                 agentdata["end"].update(dict(data["counters"][agentname])["end"])
-            txt += "Agent: {}\nStart AP: {:,}\nStart Level: {}\n".format(agentname, agentdata["start"]["AP"], agentdata["start"]["Level"])
+            txt += "Agent: {}\nStart AP: {:,}\nStart Level: {}\n".format(agentname, agentdata["start"]["AP"],
+                                                                         agentdata["start"]["Level"])
             for mode in MODES:
                 txt += "Start {}: {:,}\n".format(mode, int(agentdata["start"][mode]))
             txt += "End AP: {:,}\nEnd Level: {}\n".format(int(agentdata["end"]["AP"]), agentdata["end"]["Level"])
@@ -885,7 +922,7 @@ def minmaxap(start, end):
             minap += diff * apgains[i][0]
             guess += diff * apgains[i][1]
             maxap += diff * apgains[i][2]
-    return (minap, guess, maxap)
+    return minap, guess, maxap
 
 
 @bot.message_handler(commands=["result"])
@@ -894,18 +931,18 @@ def cmd_result(message):
     arr = ["Agent", "Faction"]
     for field in IMPORT_DATA.keys():
         arr.append(field)
-    arr.append("Start_Date");
-    arr.append("Start_Time");
-    arr.append("End_Date");
-    arr.append("End_Time");
+    arr.append("Start_Date")
+    arr.append("Start_Time")
+    arr.append("End_Date")
+    arr.append("End_Time")
     for step in ["Start", "End"]:
         arr.append("%s_AP" % step)
         arr.append("%s_LVL" % step)
         for mode in MODES:
             arr.append('"%s_%s"' % (step, mode))
-    arr.append("Min calculated AP");
-    arr.append("Probable calculated AP");
-    arr.append("Max calculated AP");
+    arr.append("Min calculated AP")
+    arr.append("Probable calculated AP")
+    arr.append("Max calculated AP")
     arr.append("Diff_AP")
     arr.append("Diff_LVL")
     for mode in MODES:
@@ -926,10 +963,10 @@ def cmd_result(message):
                 arr.append(dict(data["regData"][agentname])[field])
             else:
                 arr.append("")
-        arr.append(agentdata["start"]["Date"]);
-        arr.append(agentdata["start"]["Time"]);
-        arr.append(agentdata["end"]["Date"]);
-        arr.append(agentdata["end"]["Time"]);
+        arr.append(agentdata["start"]["Date"])
+        arr.append(agentdata["start"]["Time"])
+        arr.append(agentdata["end"]["Date"])
+        arr.append(agentdata["end"]["Time"])
         for step in ["start", "end"]:
             arr.append('%s' % agentdata[step]["AP"])
             arr.append('%s' % agentdata[step]["Level"])
@@ -991,8 +1028,11 @@ def process_msg(message):
         data["counters"][agentname] = tmp
     else:
         data["counters"][agentname] = {"start": result, "end": {}}
+        tmp = dict(data["counters"][agentname])
     save_data()
-    txt = "Агент: {}\nAP: {:,}\nLevel: {}\n".format((RESSIGN if result["Faction"] == "Resistance" else ENLSIGN) + " " + agentname, int(result["AP"]), result["Level"])
+    txt = "Агент: {}\nAP: {:,}\nLevel: {}\n".format(
+        (RESSIGN if result["Faction"] == "Resistance" else ENLSIGN) + " " + agentname, int(result["AP"]),
+        result["Level"])
     for mode in MODES:
         txt += "{}: {:,}.\n".format(mode, int(result[mode]))
     if len(diff) > 0:
@@ -1028,7 +1068,8 @@ def process_photo(message):
     else:
         agentname = username
         if not UNKNOWN_AGENTS:
-            bot.send_message(message.chat.id, "Какой такой %s? В списке зарегистрированных у меня таких нет." % username)
+            bot.send_message(message.chat.id,
+                             "Какой такой %s? В списке зарегистрированных у меня таких нет." % username)
             return
     if not TEST_MODE:
         if agentname in data["counters"].keys():
