@@ -1,5 +1,3 @@
-This project is licensed under the terms of GNU GPLv3
-
 Code is bad, need refactoring and commenting.
 But working :)
 
@@ -38,7 +36,7 @@ But working :)
 `python bot.py`
 
 Не забудьте указать настройки скрипта в файле `bot.txt`.
-`API_TOKEN` для Telegram можно получить с помощью бота @BotFather
+`API_TOKEN` для Telegram можно получить с помощью бота [@BotFather](https://telegram.me/botfather)
 
 **Важно**: Когда вы закончили работу в виртуальном окружении проекта,
 перед переключением в глобальное окружение или другое виртуальное,
